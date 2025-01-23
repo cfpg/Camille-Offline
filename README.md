@@ -1,109 +1,131 @@
-# LM-Studio-Voice-Conversation
+# Camille Offline AI Assistant
 
-Welcome to the guide for setting up and running the LM-Studio-Voice-Conversation Python application. This application implements voice conversations using local Large Language Models (LLMs) and incorporates Whisper for speech-to-text capabilities. It is designed with a focus on privacy and accessibility, providing a user-friendly interface for interactive voice-based interactions with AI.
+Welcome to Camille Offline, a Python-based AI assistant that enables voice conversations using local Large Language Models (LLMs). This project leverages Whisper for speech-to-text, LM Studio for local LLM inference, and Porcupine for wake-word detection, all while prioritizing privacy and accessibility. Camille Offline is designed to provide a seamless, interactive voice-based AI experience entirely on your local machine.
 
-## Usage Note:
+## Key Features
 
-Please note that the method for starting the local server provided in this repository may not work on all systems or operating systems due to variations in dependencies and system configurations. Additionally, changes or updates to the OpenAI Whisper and or Openai libraries may affect the functionality of the code provided here.Users are encouraged to be aware of potential issues and to consult their GPT (Generative Pre-trained Transformer) for assistance when encountering problems. The initial code in this repository was developed with the help of ChatGPT, and users are encouraged to utilize similar resources for troubleshooting and finding solutions to any issues they may encounter.Furthermore, it's important to regularly check and update the requirements.txt file to ensure compatibility with different versions of dependencies.
+- **Privacy-First**: All processing happens locally—no data is sent to external servers.
+- **Voice Interaction**: Speak naturally to interact with the AI using wake-word detection and speech-to-text.
+- **Customizable**: Easily configure the AI's name, voice, and behavior to suit your preferences.
+- **Offline Capable**: Runs entirely on your machine, intended to prevent them from listening to you.
 
-The code provided by LM Studio may in fact work for some users and users are encouraged to try that as the first option.
 
 ## Getting Started
 
-This section will guide you through preparing your local machine for running the LM-Studio-Voice-Conversation project, including installing prerequisites, setting up the Python environment, and running the project.
+This guide will walk you through setting up and running Camille Offline on your local machine. Follow the steps below to prepare your environment, install dependencies, and start using the assistant.
+
+---
 
 ### Prerequisites
 
 Before you begin, ensure you have the following installed:
 
-- **Anaconda**: Download and install from [Anaconda's official site](https://www.anaconda.com/).
-- **LM Studio**: Access and information available at [LM Studio's website](https://lmstudio.ai/).
+1. **Anaconda**: A Python distribution that simplifies package management. Download and install it from the [official Anaconda website](https://www.anaconda.com/).
+2. **LM Studio**: A desktop application for running local LLMs. Download it from the [LM Studio website](https://lmstudio.ai/).
+
+---
 
 ### Setting Up Your Python Environment
 
-Follow these steps to prepare your environment:
+1. **Create a Conda Environment**:
+   Open a terminal and create a new Conda environment with Python 3.9:
+   ```
+   conda create -n camille-env python=3.9.18
+   ```
+   Replace `camille-env` with a name of your choice.
 
-1. **Install Anaconda**: Follow the Anaconda installation instructions for your operating system available on the Anaconda website.
-
-2. **Create a New Conda Environment**:
-   ```bash
-   conda create -n myenv python=3.9.18
-
-   Replace `myenv` with a name of your choice for the environment.
-
-3. **Activate the Environment**:
-   ```bash
-   conda activate myenv
+2. **Activate the Environment**:
+   Activate the newly created environment:
+   ```
+   conda activate camille-env
    ```
 
-### Clone the Repository
-Get the project code by cloning the LM-Studio-Voice-Conversation repository:
-```bash
-git clone https://github.com/VideotronicMaker/LM-Studio-Voice-Conversation
-```
+3. **Clone the Repository**:
+   Clone the Camille Offline repository to your local machine:
+   ```
+   git clone https://github.com/cfpg/Camille-Offline
+   cd Camille-Offline
+   ```
 
 4. **Install Required Packages**:
-   Navigate to the cloned directory and install the necessary packages:
-   ```bash
+   Install the necessary Python packages using the provided `requirements.txt` file:
+   ```
    pip install -r requirements.txt
    ```
 
-### Running the Project
-- **LLM Python Script (`speak.py`)**: Main script for the language model.
+---
 
-To run the script, execute this command in your terminal:
-```bash
-python speak.py
-```
-Below is a clear, step-by-step guide on how to run the `run_script.bat` batch file, including navigating to the appropriate directory, running the script, activating the Conda environment, checking directory changes, running a Python script, and reviewing the output.
+### Configuring LM Studio
 
-# How to Run `run_script.bat`
+1. **Download a Model**:
+   Open LM Studio and download a compatible LLM model (e.g., `llama-3.2-3b-instruct`).
 
-This guide will walk you through the process of running the `run_script.bat` file from the Command Prompt. Follow these steps to execute your script successfully.
+2. **Start the Local Inference Server**:
+   In LM Studio, navigate to the "Local Server" tab and start the server. Ensure it is running on `http://localhost:1234`.
 
-## 1. Open Command Prompt
+---
 
-Press `Win + R`, type `cmd`, and press Enter to open the Command Prompt.
+### Running Camille Offline
 
-## 2. Navigate to the Directory
+1. **Set Up Environment Variables**:
+   Create a `.env` file in the project directory and add your Picovoice access key:
+   ```
+   PICOVOICE_ACCESS_KEY=your_access_key_here
+   ```
+   Replace `your_access_key_here` with your actual Picovoice access key.
 
-If you're not already in the directory where the `run_script.bat` file is located, use the `cd` command to navigate to the directory where your code is stored. Replace `<code_directory>` with the actual path to your code directory:
+2. **Run the Script**:
+   Execute the main script to start Camille Offline:
+   ```
+   python speak.py
+   ```
 
-```batch
-cd /d <code_directory>
-```
+3. **Interact with Camille**:
+   - Use the wake phrase **"Hey Camille"** to activate the assistant.
+   - Speak your command after the wake phrase is detected.
+   - Camille will process your request and respond via text-to-speech.
 
-Make sure to replace `<code_directory>` with the actual path to the directory containing the `run_script.bat` file.
+---
 
-## 3. Run the Batch Script
+## Troubleshooting
 
-Once you are in the correct directory, simply execute the `run_script.bat` file by typing its name and pressing Enter:
+- **LM Studio Compatibility**: If the provided setup doesn't work for your system, refer to the [LM Studio documentation](https://lmstudio.ai/docs) for alternative configurations.
+- **Dependency Issues**: Regularly update the `requirements.txt` file to ensure compatibility with the latest versions of dependencies.
+- **Need Help?**: This project was initially developed with the help of ChatGPT. If you encounter issues, consider consulting GPT-based tools for troubleshooting and solutions.
 
-```cmd
-run_script.bat
-```
+---
 
-## 4. Activate Conda Environment
+## Customization
 
-The batch script will attempt to activate the Conda environment named `python`.
+- **Change the Wake Phrase**: Replace the `hey-camille.ppn` file in the project directory with a custom wake-word model from [Picovoice Console](https://console.picovoice.ai/).
+- **Modify the AI's Behavior**: Edit the system prompt in the `process_input` function in `speak.py` to customize the AI's responses.
+- **Adjust Audio Settings**: Modify the `RATE`, `CHUNK`, and `FORMAT` variables in `speak.py` to optimize audio recording for your environment.
 
-## 5. Check Directory Change
+---
 
-It will check if the directory change was successful. If it encounters an issue and cannot find the specified path, it will display an error message: "The system cannot find the path specified."
+## Contributing
 
-## 6. Run Python Script
+We welcome contributions to improve Camille Offline! If you'd like to contribute, please follow these steps:
 
-If the directory change is successful, it will proceed to run the Python script named `speak.py`.
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Submit a pull request with a detailed description of your changes.
 
-## 7. Completion and Pause
+---
 
-After executing the Python script, the batch script will pause, allowing you to review any output or messages displayed by the Python script.
+## License
 
-You should see the output of the Python script in the Command Prompt window. If there are any issues with the script or its execution, error messages will be displayed in the Command Prompt, helping you identify and address any problems.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-## Development Environment Setup
+---
 
-For detailed instructions on setting up and using Visual Studio Code with this project, please see [VSCode Instructions](VSCodeSetup.md).
+## Acknowledgments
 
-## Need More Help?
-If you're new to using command line interfaces for tasks like navigating directories, creating folders, or managing Python environments, resources like ChatGPT or Gemini Pro can provide detailed, step-by-step guidance.
+- **LM Studio**: For providing an easy-to-use interface for local LLM inference.
+- **OpenAI Whisper**: For enabling accurate speech-to-text capabilities.
+- **Picovoice**: For wake-word detection technology.
+- **VideotronicMaker**: This script was originally forked from [VideotronicMaker/LM-Studio-Voice-Conversation](https://github.com/VideotronicMaker/LM-Studio-Voice-Conversation).
+
+---
+
+Enjoy using Camille Offline! If you have any questions or feedback, feel free to open an issue on the [GitHub repository](https://github.com/cfpg/Camille-Offline).

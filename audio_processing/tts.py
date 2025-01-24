@@ -1,8 +1,15 @@
 import pyttsx4
 import multiprocessing
 
+
 class TTSWorker:
     def __init__(self, voice_id):
+        """
+        Initialize the TTSWorker.
+
+        Args:
+            voice_id (str): The voice ID for the TTS engine.
+        """
         self.voice_id = voice_id
         self.queue = multiprocessing.Queue()
         self.process = None
@@ -27,12 +34,16 @@ class TTSWorker:
             print(f"Finished processing TTS.")
 
     def start(self):
-        self.process = multiprocessing.Process(target=self.tts_worker, args=(self.queue,))
+        """Start the TTS worker process."""
+        self.process = multiprocessing.Process(
+            target=self.tts_worker, args=(self.queue,))
         self.process.start()
 
     def speak(self, phrase):
+        """Add a phrase to the TTS queue."""
         self.queue.put(phrase)
 
     def stop(self):
-        self.queue.put(None)
+        """Stop the TTS worker process gracefully."""
+        self.queue.put(None)  # Send sentinel to exit the process
         self.process.join()

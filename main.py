@@ -35,9 +35,7 @@ def main():
     try:
         while True:
             if wake_word_detector.listen_for_wake_phrase():
-                silence_threshold = recorder.calibrate_noise_floor(recorder.audio.open(
-                    format=recorder.format, channels=recorder.channels, rate=recorder.rate, input=True, frames_per_buffer=recorder.chunk))
-                audio_file = recorder.record_audio(silence_threshold)
+                audio_file = recorder.record_audio()
                 transcribed_text = whisper_transcriber.transcribe(audio_file)
                 response = llm_processor.process_input(transcribed_text)
                 tts_worker.speak(response)

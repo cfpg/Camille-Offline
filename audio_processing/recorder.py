@@ -40,9 +40,9 @@ class AudioRecorder:
             f"{colors['yellow']}Silence threshold set to: {silence_threshold}{colors['reset']}")
         return silence_threshold
 
-    def record_audio(self, silence_threshold, max_silent_chunks=15):
+    def record_audio(self, max_silent_chunks=15):
         stream = self.audio.open(format=self.format, channels=self.channels,
-                            rate=self.rate, input=True, frames_per_buffer=self.chunk)
+                                 rate=self.rate, input=True, frames_per_buffer=self.chunk)
 
         # Calibrate noise floor and set silence threshold
         silence_threshold = self.calibrate_noise_floor(stream)
@@ -50,8 +50,6 @@ class AudioRecorder:
         print(f"{colors['green']}Listening for command...{colors['reset']}")
         frames = []
 
-        # Set thresholds and silence detection parameters
-        max_silent_chunks = 15  # Adjust based on your needs
         silent_chunk_count = 0
 
         while True:

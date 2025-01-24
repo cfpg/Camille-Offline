@@ -6,6 +6,13 @@ from audio_processing.tts import TTSWorker
 from nlp.whisper_transcriber import WhisperTranscriber
 from nlp.llm_processor import LLMProcessor
 from utils.colors import colors
+from pymemcache.client import base
+
+
+def initialize_memcached():
+    """Initialize and return a Memcached client."""
+    host, port = MEMCACHED_HOST.split(':')
+    return base.Client((host, int(port)))
 
 
 def main():
@@ -16,10 +23,11 @@ def main():
     tts_worker = TTSWorker(
         "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
     wake_word_detector = WakeWordDetector(
-        PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)  # Pass TTSWorker here
+        PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
     whisper_transcriber = WhisperTranscriber()
+    memcached_client = initialize_memcached()
     llm_processor = LLMProcessor(
-        MODEL, MEMCACHED_HOST, MEMCACHED_KEY, AI_NAME, USER_NAME)
+        MODEL, memcached_client, MEMCACHED_KEY, AI_NAME, USER_NAME)
 
     # Start TTS worker
     tts_worker.start()
@@ -36,7 +44,14 @@ def main():
     except KeyboardInterrupt:
         print("\nExiting...")
     finally:
+        # Stop the TTS worker gracefully
         tts_worker.stop()
+
+        # Clean up audio resources
+        recorder.audio.terminate()
+
+        # Clear the conversation in Memcached
+        memcached_client.delete(MEMCACHED_KEY)
 
 
 if __name__ == "__main__":

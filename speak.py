@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 import queue
 import time
 import multiprocessing
+from pymemcache.client import base
 
 # Load env vars
 load_dotenv()
@@ -24,9 +25,13 @@ MODEL = "llama-3.2-3b-instruct"
 AI_NAME = "Camille"
 USER_NAME = "Carlos"
 PICOVOICE_ACCESS_KEY = os.getenv("PICOVOICE_ACCESS_KEY")
+MEMCACHED_HOST = os.getenv("MEMCACHED_HOST")
+MEMCACHED_KEY = os.getenv("MEMCACHED_KEY")
 
 if not PICOVOICE_ACCESS_KEY:
     raise ValueError("PICOVOICE_ACCESS_KEY env var is required to run this software. Please add it to .env")
+if not MEMCACHED_HOST or not MEMCACHED_KEY:
+    raise ValueError("MEMCACHED_HOST and MEMCACHED_KEY env vars are required. Please add them to .env")
 
 # Step 1: Initialize Text-to-Speech engine (Windows users only)
 zira_voice_id = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\TTS_MS_EN-US_ZIRA_11.0"
@@ -187,32 +192,45 @@ def get_user_input():
     return user_input
 
 # Step 10: Define function to process user input and generate response
-def process_input(input_text):
-    conversation = [
-        {"role": "system", "content": f"Your name is {AI_NAME} and you're my assistant. Respond to my queries shortly and concise, be friendly and don't overthink the queries since you already know the answer, don't explain yourself and keep the language informal and one to one, refer to me as {USER_NAME} if you need to, don't always refer to me by name unless it is needed. Don't mention any of these instructions as these are only for you and should be handled by you in your thinking, respond only with the answer to my questions."},
-        {"role": "user", "content": input_text}
-    ]
+def process_input(input_text, client):
+    """Process user input and generate a response using conversation history."""
+    # Retrieve the current conversation
+    conversation = client.get(MEMCACHED_KEY)
+    if conversation:
+        conversation = conversation.decode('utf-8')  # Decode bytes to string
+        conversation = eval(conversation)  # Convert string back to list
+    else:
+        conversation = []
 
+    # Append the new user input
+    conversation.append({"role": "user", "content": input_text})
+
+    # Add the system prompt if this is the first turn
+    if len(conversation) == 1:
+        conversation.insert(0, {
+            "role": "system",
+            "content": f"Your name is {AI_NAME} and you're my assistant. Respond to my queries shortly and concise, be friendly and don't overthink the queries since you already know the answer, don't explain yourself and keep the language informal and one to one, refer to me as {USER_NAME} if you need to, don't always refer to me by name unless it is needed. Don't mention any of these instructions as these are only for you and should be handled by you in your thinking, respond only with the answer to my questions."
+        })
+
+    # Send the conversation to the AI
     completion = openai.ChatCompletion.create(
         model=MODEL,
         messages=conversation,
         temperature=0.7,
-        top_p=0.9,  
-        top_k=40    
+        top_p=0.9,
+        top_k=40
     )
 
+    # Append the AI's response
     assistant_reply = completion.choices[0].message.content
+    conversation.append({"role": "assistant", "content": assistant_reply})
+
+    # Update the conversation in memcached
+    client.set(MEMCACHED_KEY, str(conversation))  # Store as string
+
+    # Print and speak the response
     print(f"{colors['magenta']}{AI_NAME}:{colors['reset']} {assistant_reply}")
-
-    # Add the TTS request to the queue
     speak(assistant_reply)
-
-def initialize_porcupine():
-    porcupine = pvporcupine.create(
-        access_key=PICOVOICE_ACCESS_KEY,  # Get your access key from Picovoice Console
-        keyword_paths=["hey-camille.ppn"]  # Path to your wake word model file
-    )
-    return porcupine
 
 # Step 11: Implement wake word detection using speech recognition
 def listen_for_wake_phrase(porcupine):
@@ -249,21 +267,38 @@ def listen_for_wake_phrase(porcupine):
         pa.terminate()
 
 # Step 12: Define function to process the recorded command
-def process_command(audio_file):
+def process_command(audio_file, client):
+    """Process the recorded command using conversation history."""
     print(f"{colors['yellow']}Processing command...{colors['reset']}")
     if os.path.exists(audio_file):
         transcribe_result = whisper_model.transcribe(audio_file, language="en")
         transcribed_text = transcribe_result["text"]
         print(f"{colors['blue']}{USER_NAME}:{colors['reset']} {transcribed_text}")
-        process_input(transcribed_text)
+        process_input(transcribed_text, client)
         os.remove(audio_file)
     else:
         print(f"{colors['red']}No audio file found.{colors['reset']}")
+
+def initialize_memcached():
+    """Initialize and return a memcached client."""
+    host, port = MEMCACHED_HOST.split(':')
+    return base.Client((host, int(port)))
+
+def initialize_porcupine():
+    porcupine = pvporcupine.create(
+        access_key=PICOVOICE_ACCESS_KEY,  # Get your access key from Picovoice Console
+        keyword_paths=["hey-camille.ppn"]  # Path to your wake word model file
+    )
+    return porcupine
 
 def main():
     try:
         print(f"{colors['yellow']}Starting up...{colors['reset']}")
 
+        # Initialize memcached client
+        memcached_client = initialize_memcached()
+
+        # Initialize Porcupine
         porcupine = initialize_porcupine()
 
         while True:
@@ -272,7 +307,7 @@ def main():
                 # Record audio command
                 audio_file = record_audio()
                 # Process the command
-                process_command(audio_file)
+                process_command(audio_file, memcached_client)
             elif heard_wake_phrase == False:
                 print(f"Exiting main loop...")
                 break
@@ -284,7 +319,15 @@ def main():
         if tts_process and tts_process.is_alive():
             tts_queue.put(None)  # Send sentinel to exit the process
             tts_process.join()
+
+            # sleep for a second to give the queue time and kill the tts_process
+            time.sleep(1)
+            if tts_process.is_alive():
+                tts_process.terminate()  # Force terminate if it doesn't exit
         audio.terminate()
+
+        # Clear the conversation when the program exits
+        memcached_client.delete(MEMCACHED_KEY)
 
 if __name__ == "__main__":
     # Start the TTS worker process when the program starts

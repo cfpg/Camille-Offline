@@ -29,9 +29,9 @@ Before you begin, ensure you have the following installed:
 ### Setting Up Your Python Environment
 
 1. **Create a Conda Environment**:
-   Open a terminal and create a new Conda environment with Python 3.9:
+   Open a terminal and create a new Conda environment with Python 3.11:
    ```
-   conda create -n camille-env python=3.9.18
+   conda create -n camille-env python=3.11
    ```
    Replace `camille-env` with a name of your choice.
 
@@ -101,7 +101,7 @@ Before you begin, ensure you have the following installed:
 2. **Run the Script**:
    Execute the main script to start Camille Offline:
    ```
-   python speak.py
+   python main.py
    ```
 
 3. **Interact with Camille**:
@@ -123,8 +123,8 @@ Before you begin, ensure you have the following installed:
 ## Customization
 
 - **Change the Wake Phrase**: Replace the `hey-camille.ppn` file in the project directory with a custom wake-word model from [Picovoice Console](https://console.picovoice.ai/).
-- **Modify the AI's Behavior**: Edit the system prompt in the `process_input` function in `speak.py` to customize the AI's responses.
-- **Adjust Audio Settings**: Modify the `RATE`, `CHUNK`, and `FORMAT` variables in `speak.py` to optimize audio recording for your environment.
+- **Modify the AI's Behavior**: Edit the system prompt in the `process_input` function to customize the AI's responses.
+- **Adjust Audio Settings**: Modify the `RATE`, `CHUNK`, and `FORMAT` variables to optimize audio recording for your environment.
 - **Memcached Configuration**: Update the `.env` file to point to a different Memcached server or key if needed.
 
 ---

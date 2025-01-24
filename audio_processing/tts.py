@@ -1,0 +1,49 @@
+import pyttsx4
+import multiprocessing
+
+
+class TTSWorker:
+    def __init__(self, voice_id):
+        """
+        Initialize the TTSWorker.
+
+        Args:
+            voice_id (str): The voice ID for the TTS engine.
+        """
+        self.voice_id = voice_id
+        self.queue = multiprocessing.Queue()
+        self.process = None
+
+    def tts_worker(self, queue):
+        """Worker function to handle TTS in a separate process."""
+        engine = pyttsx4.init()
+        engine.setProperty('voice', self.voice_id)
+
+        # Pre-initialize the engine by speaking an empty string
+        engine.say("")
+        engine.runAndWait()
+
+        while True:
+            phrase = queue.get()
+            if phrase is None:  # Sentinel value to exit the process
+                break
+
+            print(f"Queuing phrase: {phrase}")
+            engine.say(phrase)
+            engine.runAndWait()
+            print(f"Finished processing TTS.")
+
+    def start(self):
+        """Start the TTS worker process."""
+        self.process = multiprocessing.Process(
+            target=self.tts_worker, args=(self.queue,))
+        self.process.start()
+
+    def speak(self, phrase):
+        """Add a phrase to the TTS queue."""
+        self.queue.put(phrase)
+
+    def stop(self):
+        """Stop the TTS worker process gracefully."""
+        self.queue.put(None)  # Send sentinel to exit the process
+        self.process.join()

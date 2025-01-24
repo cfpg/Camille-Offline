@@ -1,4 +1,9 @@
 import openai
+from config import OPENAI_API_BASE, OPENAI_KEY
+
+
+openai.api_base = OPENAI_API_BASE
+openai.api_key = OPENAI_KEY
 
 
 class LLMProcessor:

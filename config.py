@@ -12,6 +12,8 @@ USER_NAME = "Carlos"
 PICOVOICE_ACCESS_KEY = os.getenv("PICOVOICE_ACCESS_KEY")
 MEMCACHED_HOST = os.getenv("MEMCACHED_HOST")
 MEMCACHED_KEY = os.getenv("MEMCACHED_KEY")
+OPENAI_API_BASE = "http://localhost:1234/v1"
+OPENAI_KEY = "not-needed"
 
 if not PICOVOICE_ACCESS_KEY:
     raise ValueError(

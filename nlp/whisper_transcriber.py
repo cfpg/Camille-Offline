@@ -7,4 +7,4 @@ class WhisperTranscriber:
 
     def transcribe(self, audio_file):
         result = self.model.transcribe(audio_file, language="en")
-        return result["text"]
+        return result["text"].strip()

@@ -28,6 +28,12 @@ def main():
             if wake_word_detector.listen_for_wake_phrase():
                 audio_file = recorder.record_audio()
                 transcribed_text = whisper_transcriber.transcribe(audio_file)
+
+                # Check for empty transcription and notify user
+                if not transcribed_text or len(transcribed_text.strip()) < 4:
+                    tts_worker.speak("I didn't hear anything.")
+                    continue
+
                 response = llm_processor.process_input(transcribed_text)
                 tts_worker.speak(response)
     except KeyboardInterrupt:

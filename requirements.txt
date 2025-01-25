@@ -1,5 +1,5 @@
+langchain==0.3.15
 numpy==2.2.2
-openai==0.27.0
 openai_whisper==20231117
 pvporcupine==3.0.4
 PyAudio==0.2.14

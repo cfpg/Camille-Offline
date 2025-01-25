@@ -1,18 +1,11 @@
 import time
-from config import DEBUG, MODEL, AI_NAME, USER_NAME, PICOVOICE_ACCESS_KEY, MEMCACHED_HOST, MEMCACHED_KEY
+from config import DEBUG, MODEL, AI_NAME, USER_NAME, PICOVOICE_ACCESS_KEY
 from audio_processing.recorder import AudioRecorder
 from audio_processing.wake_word import WakeWordDetector
 from audio_processing.tts import TTSWorker
 from nlp.whisper_transcriber import WhisperTranscriber
 from nlp.llm_processor import LLMProcessor
 from utils.colors import colors
-from pymemcache.client import base
-
-
-def initialize_memcached():
-    """Initialize and return a Memcached client."""
-    host, port = MEMCACHED_HOST.split(':')
-    return base.Client((host, int(port)))
 
 
 def main():
@@ -25,9 +18,7 @@ def main():
     wake_word_detector = WakeWordDetector(
         PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
     whisper_transcriber = WhisperTranscriber()
-    memcached_client = initialize_memcached()
-    llm_processor = LLMProcessor(
-        MODEL, memcached_client, MEMCACHED_KEY, AI_NAME, USER_NAME)
+    llm_processor = LLMProcessor(MODEL, AI_NAME, USER_NAME)
 
     # Start TTS worker
     tts_worker.start()
@@ -47,9 +38,6 @@ def main():
 
         # Clean up audio resources
         recorder.audio.terminate()
-
-        # Clear the conversation in Memcached
-        memcached_client.delete(MEMCACHED_KEY)
 
 
 if __name__ == "__main__":

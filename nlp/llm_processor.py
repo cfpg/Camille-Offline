@@ -4,6 +4,7 @@ from langchain.memory import ConversationBufferMemory
 from langchain.schema import SystemMessage
 from tools import get_all_tools
 from config import OPENAI_API_BASE, OPENAI_KEY
+from utils.colors import colors
 
 
 class LLMProcessor:
@@ -75,7 +76,8 @@ class LLMProcessor:
             self.llm,
             agent="chat-conversational-react-description",
             memory=self.memory,
-            verbose=True
+            verbose=True,
+            handle_parsing_errors=True
         )
 
     def _add_system_message(self):
@@ -101,6 +103,7 @@ class LLMProcessor:
         Returns:
             str: The AI's response.
         """
+        print(f"{colors['cyan']}User input: {input_text}{colors['reset']}")
         # Process input with agent
         response = self.agent.run(input_text)
         return response

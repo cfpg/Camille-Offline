@@ -16,3 +16,7 @@ OPENAI_KEY = "not-needed"
 if not PICOVOICE_ACCESS_KEY:
     raise ValueError(
         "PICOVOICE_ACCESS_KEY env var is required to run this software. Please add it to .env")
+
+# Tools configuration
+OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
+OPENWEATHERMAP_DEFAULT_CITY = os.getenv("OPENWEATHERMAP_DEFAULT_CITY")

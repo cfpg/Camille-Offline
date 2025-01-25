@@ -8,7 +8,8 @@ Welcome to Camille Offline, a Python-based AI assistant that enables voice conve
 - **Voice Interaction**: Speak naturally to interact with the AI using wake-word detection and speech-to-text.
 - **Customizable**: Easily configure the AI's name, voice, and behavior to suit your preferences.
 - **Offline Capable**: Runs entirely on your machine, intended to prevent them from listening to you.
-- **Conversation History**: Maintains context across multiple interactions using memcached for conversation storage.
+- **Extensible Functionality**: Supports custom tools and functions through LangChain integration.
+- **Conversation Context**: Maintains context across interactions using LangChain's memory system.
 
 ## Getting Started
 
@@ -22,7 +23,6 @@ Before you begin, ensure you have the following installed:
 
 1. **Anaconda**: A Python distribution that simplifies package management. Download and install it from the [official Anaconda website](https://www.anaconda.com/).
 2. **LM Studio**: A desktop application for running local LLMs. Download it from the [LM Studio website](https://lmstudio.ai/).
-3. **Memcached**: A distributed memory caching system. Install it using your package manager or download it from the [official Memcached website](https://memcached.org/).
 
 ---
 
@@ -66,35 +66,12 @@ Before you begin, ensure you have the following installed:
 
 ---
 
-### Setting Up Memcached
-
-1. **Install Memcached**:
-   - On Linux, use your package manager:
-     ```
-     sudo apt-get install memcached
-     ```
-   - On macOS, use Homebrew:
-     ```
-     brew install memcached
-     ```
-   - On Windows, download and install Memcached from the [official website](https://memcached.org/).
-
-2. **Start Memcached**:
-   Start the Memcached server:
-   ```
-   memcached -vv
-   ```
-
----
-
 ### Running Camille Offline
 
 1. **Set Up Environment Variables**:
    Create a `.env` file in the project directory and add the following variables:
    ```
    PICOVOICE_ACCESS_KEY=your_access_key_here
-   MEMCACHED_HOST=localhost:11211
-   MEMCACHED_KEY=camille_conversation
    ```
    Replace `your_access_key_here` with your actual Picovoice access key.
 
@@ -115,7 +92,6 @@ Before you begin, ensure you have the following installed:
 
 - **LM Studio Compatibility**: If the provided setup doesn't work for your system, refer to the [LM Studio documentation](https://lmstudio.ai/docs) for alternative configurations.
 - **Dependency Issues**: Regularly update the `requirements.txt` file to ensure compatibility with the latest versions of dependencies.
-- **Memcached Issues**: Ensure Memcached is running and accessible at the specified host and port.
 - **Need Help?**: This project was initially developed with the help of ChatGPT. If you encounter issues, consider consulting GPT-based tools for troubleshooting and solutions.
 
 ---
@@ -124,8 +100,40 @@ Before you begin, ensure you have the following installed:
 
 - **Change the Wake Phrase**: Replace the `hey-camille.ppn` file in the project directory with a custom wake-word model from [Picovoice Console](https://console.picovoice.ai/).
 - **Modify the AI's Behavior**: Edit the system prompt in the `process_input` function to customize the AI's responses.
+- **Add Custom Tools**: Create new Python files in the `tools` directory to add custom functionality.
 - **Adjust Audio Settings**: Modify the `RATE`, `CHUNK`, and `FORMAT` variables to optimize audio recording for your environment.
-- **Memcached Configuration**: Update the `.env` file to point to a different Memcached server or key if needed.
+
+## Adding New Tools
+
+Camille Offline supports custom tools through LangChain's tool system. Follow these steps to add new functionality:
+
+1. **Create a New Tool File**:
+   Create a new Python file in the `tools` directory (e.g., `tools/my_tool.py`).
+
+2. **Define Your Tool**:
+   Use the following template to create your tool:
+
+   ```python
+   from tools import register_tool
+   from langchain.tools import tool
+
+   @tool
+   @register_tool
+   def my_tool(parameter: str) -> str:
+       """
+       Brief description of what your tool does.
+       
+       Args:
+           parameter: Explanation of the parameter
+           
+       Returns:
+           Explanation of the return value
+       """
+       # Your implementation here
+       return "Tool result"
+   ```
+3. **Automatic Registration**:
+    The tool will be automatically discovered and registered when the application starts.
 
 ---
 
@@ -150,6 +158,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - **LM Studio**: For providing an easy-to-use interface for local LLM inference.
 - **OpenAI Whisper**: For enabling accurate speech-to-text capabilities.
 - **Picovoice**: For wake-word detection technology.
+- **LangChain**: For providing tools and memory management capabilities.
 - **VideotronicMaker**: This script was originally forked from [VideotronicMaker/LM-Studio-Voice-Conversation](https://github.com/VideotronicMaker/LM-Studio-Voice-Conversation).
 
 ---

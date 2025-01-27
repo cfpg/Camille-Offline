@@ -46,7 +46,7 @@ def get_weather(city: str = None) -> str:
         temp = data['main']['temp']
         humidity = data['main']['humidity']
 
-        return (f"The weather in {target_city}{default_city_note} is {temp}°F with {weather}. "
+        return (f"The weather in {target_city}{default_city_note} is {temp}°C with {weather}. "
                 f"Humidity is {humidity}%.")
 
     except Exception as e:

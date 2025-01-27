@@ -53,7 +53,7 @@ class AudioRecorder:
         silent_chunk_count = 0
 
         while True:
-            data = stream.read(self.chunk)
+            data = stream.read(self.chunk, exception_on_overflow=False)
             if not data:
                 break
 

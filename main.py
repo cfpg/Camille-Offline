@@ -1,4 +1,5 @@
 import time
+import threading
 from config import DEBUG, MODEL, AI_NAME, USER_NAME, PICOVOICE_ACCESS_KEY
 from audio_processing.recorder import AudioRecorder
 from audio_processing.wake_word import WakeWordDetector
@@ -9,6 +10,24 @@ from utils.colors import colors
 from animation.opengl_animation import OpenGLAnimation
 
 
+def voice_chat_loop(opengl_animation, recorder, wake_word_detector, whisper_transcriber, tts_worker, llm_processor):
+    while opengl_animation.running:
+        if wake_word_detector.listen_for_wake_phrase():
+            opengl_animation.set_state(1)  # Set state to listening
+            audio_file = recorder.record_audio()
+            transcribed_text = whisper_transcriber.transcribe(audio_file)
+
+            if not transcribed_text or len(transcribed_text.strip()) < 4:
+                tts_worker.speak("I didn't hear anything.")
+                opengl_animation.set_state(0)  # Set state to waiting
+                continue
+
+            opengl_animation.set_state(2)  # Set state to talking
+            response = llm_processor.process_input(transcribed_text)
+            tts_worker.speak(response)
+            opengl_animation.set_state(0)  # Set state to waiting
+        time.sleep(0.1) # Reduce CPU usage in the thread
+        
 def main():
     print(f"{colors['yellow']}Starting up...{colors['reset']}")
 
@@ -22,42 +41,27 @@ def main():
     llm_processor = LLMProcessor(MODEL, AI_NAME, USER_NAME)
     opengl_animation = OpenGLAnimation()
 
-    # Start TTS worker and OpenGL animation
+    # Start TTS worker
     tts_worker.start()
     opengl_animation.start()
 
+    voice_chat_thread = threading.Thread(target=voice_chat_loop, args=(
+        opengl_animation, recorder, wake_word_detector, whisper_transcriber, tts_worker, llm_processor))
+    voice_chat_thread.daemon = True # Allow main thread to exit without waiting for this thread
+    voice_chat_thread.start()
+
     try:
-        # Main loop
         while True:
-            # Update OpenGL animation
             if not opengl_animation.render():
                 break
-
-            # Check for wake phrase
-            if wake_word_detector.check_for_wake_phrase():
-                opengl_animation.set_state(1)  # Listening state
-                audio_file = recorder.record_audio()
-                transcribed_text = whisper_transcriber.transcribe(audio_file)
-
-                if not transcribed_text or len(transcribed_text.strip()) < 4:
-                    tts_worker.speak("I didn't hear anything.")
-                    continue
-
-                response = llm_processor.process_input(transcribed_text)
-                opengl_animation.set_state(2)  # Talking state
-                tts_worker.speak(response)
-
-            # Sleep briefly to avoid busy-waiting
-            time.sleep(0.01)
-
+            time.sleep(1/60) # Limit frame rate to 60 FPS and reduce CPU usage
     except KeyboardInterrupt:
         print("\nExiting...")
     finally:
-        # Stop the TTS worker and OpenGL animation gracefully
+        opengl_animation.running = False # Signal thread to stop
+        voice_chat_thread.join(timeout=2) # Give thread a moment to stop
         tts_worker.stop()
         opengl_animation.stop()
-
-        # Clean up audio resources
         recorder.audio.terminate()
 
 

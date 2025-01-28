@@ -12,6 +12,7 @@ class OpenGLAnimation:
         self.running = False
         self.shader_program = None
         self.start_time = time.time()
+        self.last_state_change = time.time()  # Add this line
         self.window = None
         self.vao = None
         self.vbo = None
@@ -128,6 +129,9 @@ class OpenGLAnimation:
                     "iTime"), time.time() - self.start_time)
         glUniform1i(glGetUniformLocation(
             self.shader_program, "state"), self.state)
+        # Add this line to pass transition time to shader
+        glUniform1f(glGetUniformLocation(self.shader_program,
+                    "transitionTime"), time.time() - self.last_state_change)
 
         # Draw the full-screen quad
         glBindVertexArray(self.vao)
@@ -138,7 +142,9 @@ class OpenGLAnimation:
         return True
 
     def set_state(self, state):
-        self.state = state
+        if self.state != state:  # Only update if state actually changes
+            self.last_state_change = time.time()
+            self.state = state
 
     def stop(self):
         self.running = False

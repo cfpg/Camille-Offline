@@ -12,7 +12,7 @@ from animation.opengl_animation import OpenGLAnimation
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('app.log'),
@@ -27,21 +27,24 @@ def voice_chat_loop(opengl_animation, recorder, wake_word_detector, whisper_tran
     while opengl_animation.running:
         try:
             if wake_word_detector.listen_for_wake_phrase():
-                logger.debug("Wake word detected")
+                logger.info("Wake word detected")
+                opengl_animation.set_state(1)  # Set listening state
                 audio_file = recorder.record_audio()
                 transcribed_text = whisper_transcriber.transcribe(audio_file)
+                opengl_animation.set_state(0)  # Back to waiting state
 
                 if not transcribed_text or len(transcribed_text.strip()) < 4:
                     logger.warning("No or too short transcription detected")
                     tts_worker.speak("I didn't hear anything.")
                     continue
 
-                logger.debug(f"Transcribed text: {transcribed_text}")
+                logger.info(f"Transcribed text: {transcribed_text}")
                 response = llm_processor.process_input(transcribed_text)
-                logger.debug(f"LLM response: {response}")
+                logger.info(f"LLM response: {response}")
                 tts_worker.speak(response)
 
             time.sleep(0.1)
+
         except Exception as e:
             logger.error(f"Error in voice chat loop: {str(e)}", exc_info=True)
 
@@ -51,9 +54,9 @@ def main():
 
     try:
         # Initialize OpenGL animation first
-        logger.debug("Creating OpenGL Animation instance")
+        logger.info("Creating OpenGL Animation instance")
         opengl_animation = OpenGLAnimation()
-        logger.debug("Starting OpenGL Animation")
+        logger.info("Starting OpenGL Animation")
         opengl_animation.start()  # Call start() to initialize GLFW and shaders
         
         if not opengl_animation.running:
@@ -88,9 +91,10 @@ def main():
             # Check for state changes from TTS worker
             if tts_worker.state_event.is_set():
                 current_state = tts_worker.current_state.value
-                logger.debug(f"State change detected: {current_state}")
+                logger.info(f"State change detected: {current_state}")
                 tts_worker.state_event.clear()
-                opengl_animation.set_state(current_state)
+                if current_state != 1: # Only change state if it is not listening
+                    opengl_animation.set_state(current_state)
 
             # Limit frame rate (optional, GLFW's swap interval might already handle this)
             time.sleep(1/60)

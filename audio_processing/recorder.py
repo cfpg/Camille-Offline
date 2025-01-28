@@ -1,9 +1,12 @@
 import wave
+import logging
 import numpy as np
 import pyaudio
 from utils.colors import colors
 from config import DEBUG
 
+
+logger = logging.getLogger(__name__)
 
 class AudioRecorder:
     def __init__(self, format=pyaudio.paInt16, channels=1, rate=8000, chunk=1024):
@@ -41,54 +44,39 @@ class AudioRecorder:
         return silence_threshold
 
     def record_audio(self, max_silent_chunks=15):
+        logger.info("Starting audio recording")
         stream = self.audio.open(format=self.format, channels=self.channels,
-                                 rate=self.rate, input=True, frames_per_buffer=self.chunk)
-
-        # Calibrate noise floor and set silence threshold
+                               rate=self.rate, input=True, frames_per_buffer=self.chunk)
+        
         silence_threshold = self.calibrate_noise_floor(stream)
-
-        print(f"{colors['green']}Listening for command...{colors['reset']}")
         frames = []
-
         silent_chunk_count = 0
 
-        while True:
-            data = stream.read(self.chunk, exception_on_overflow=False)
-            if not data:
-                break
-
-            # Convert data to float representation for analysis
-            audio_data = self.bytes_to_float_array(data)
-
-            # Calculate the RMS (Root Mean Square) as a measure of loudness
-            rms = np.sqrt(np.mean(audio_data ** 2))
-
-            if DEBUG:
-                print(
-                    f"{colors['cyan']}Raw audio max: {np.max(audio_data)}; min: {np.min(audio_data)}; RMS: {rms}{colors['reset']}")
-                print(
-                    f"{colors['cyan']}silent chunks: {silent_chunk_count}; RMS: {rms}{colors['reset']}")
-
-            # If the RMS is below a certain threshold, consider it silent
-            if rms < silence_threshold:  # Adjust this threshold based on your environment and testing
-                silent_chunk_count += 1
-                if silent_chunk_count > max_silent_chunks:
-                    print(
-                        f"{colors['red']}Detecting silence... Stopping recording.{colors['reset']}")
+        try:
+            while True:
+                data = stream.read(self.chunk, exception_on_overflow=False)
+                if not data:
                     break
-            else:
-                if DEBUG:
-                    print(
-                        f"{colors['cyan']}Someone is speaking...{colors['reset']}")
 
-                silent_chunk_count = 0
+                audio_data = self.bytes_to_float_array(data)
+                rms = np.sqrt(np.mean(audio_data ** 2))
 
-            frames.append(data)
+                if rms < silence_threshold:
+                    silent_chunk_count += 1
+                    if silent_chunk_count > max_silent_chunks:
+                        logger.info("Silence detected, stopping recording")
+                        break
+                else:
+                    silent_chunk_count = 0
 
-        print(f"{colors['red']}Stopping recording.{colors['reset']}")
-        stream.stop_stream()
-        stream.close()
+                frames.append(data)
 
+        finally:
+            logger.info("Stopping audio recording")
+            stream.stop_stream()
+            stream.close()
+
+        # Save audio file
         wf = wave.open("temp_audio.wav", 'wb')
         wf.setnchannels(self.channels)
         wf.setsampwidth(self.audio.get_sample_size(self.format))

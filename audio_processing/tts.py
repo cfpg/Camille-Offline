@@ -20,7 +20,7 @@ class TTSWorker:
         self.process = None
         self.state_event = self.ctx.Event()
         self.current_state = self.ctx.Value('i', 0)
-        logger.debug(f"TTSWorker initialized with voice_id: {voice_id}")
+        logger.info(f"TTSWorker initialized with voice_id: {voice_id}")
 
     def tts_worker(self, queue, state_event, current_state):
         """Worker function to handle TTS in a separate process."""
@@ -30,7 +30,7 @@ class TTSWorker:
             engine.setProperty('voice', self.voice_id)
             engine.say("")
             engine.runAndWait()
-            logger.debug("TTS engine initialized successfully")
+            logger.info("TTS engine initialized successfully")
 
             while True:
                 try:
@@ -39,15 +39,15 @@ class TTSWorker:
                         logger.info("Received shutdown signal")
                         break
 
-                    logger.debug(f"Processing phrase: {phrase}")
+                    logger.info(f"Processing phrase: {phrase}")
                     with current_state.get_lock():
-                        current_state.value = 1
+                        current_state.value = 2
                     state_event.set()
 
                     engine.say(phrase)
                     engine.runAndWait()
                     
-                    logger.debug("TTS processing complete")
+                    logger.info("TTS processing complete")
                     with current_state.get_lock():
                         current_state.value = 0
                     state_event.set()
@@ -69,12 +69,12 @@ class TTSWorker:
         )
         self.process.daemon = True  # Make process daemon so it exits when main process exits
         self.process.start()
-        logger.debug(f"TTS worker process started with PID: {self.process.pid}")
+        logger.info(f"TTS worker process started with PID: {self.process.pid}")
 
     def speak(self, phrase):
         """Add a phrase to the TTS queue and set state in main thread."""
         try:
-            logger.debug(f"Queueing phrase: {phrase}")
+            logger.info(f"Queueing phrase: {phrase}")
             self.queue.put(phrase)
             with self.current_state.get_lock():
                 self.current_state.value = 2

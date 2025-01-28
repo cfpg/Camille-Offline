@@ -63,28 +63,28 @@ vec4 generateLayer(vec2 fragCoord, int targetState, vec3 layerStartColor, vec3 l
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // Generate each layer with its respective colors
-    vec4 blueLayer = generateLayer(fragCoord, 0, 
+    vec4 waitingLayer = generateLayer(fragCoord, 0, 
         vec3(0.0, 0.0, 1.0),  // Bright blue
         vec3(0.0, 0.0, 0.5),  // Dark blue
         1.0
     );
     
-    vec4 redLayer = generateLayer(fragCoord, 1,
+    vec4 listeningLayer = generateLayer(fragCoord, 1,
         vec3(1.0, 0.0, 0.0),  // Bright red
         vec3(0.5, 0.0, 0.0),  // Dark red
         1.0
     );
     
     vec4 speakingLayer = generateLayer(fragCoord, 2,
-        vec3(0.0, 0.0, 1.0),  // Bright blue
-        vec3(0.0, 0.0, 0.5),  // Dark blue
+        vec3(0.0, 1.0, 0.0),  // Bright green
+        vec3(0.0, 0.5, 0.0),  // Dark green
         1.0
     );
     
     // Blend the layers together
     vec4 finalOutput = vec4(0.0);
-    finalOutput += blueLayer;
-    finalOutput += redLayer;
+    finalOutput += waitingLayer;
+    finalOutput += listeningLayer;
     finalOutput += speakingLayer;
     
     fragColor = finalOutput;

@@ -4,17 +4,19 @@ from threading import Event
 
 
 class TTSWorker:
-    def __init__(self, voice_id):
+    def __init__(self, voice_id, animation):
         """
         Initialize the TTSWorker.
 
         Args:
             voice_id (str): The voice ID for the TTS engine.
+            animation: An instance of OpenGLAnimation to handle state changes.
         """
         self.voice_id = voice_id
         self.queue = multiprocessing.Queue()
         self.process = None
         self.tts_finished_event = Event()
+        self.animation = animation
 
     def tts_worker(self, queue):
         """Worker function to handle TTS in a separate process."""
@@ -48,7 +50,7 @@ class TTSWorker:
         self.queue.put(phrase)
         if not self.tts_finished_event.is_set():
             # Set animation state to talking immediately
-            opengl_animation.set_state(2)  # Set state to talking
+            self.animation.set_state(2)  # Set state to talking
 
     def stop(self):
         """Stop the TTS worker process gracefully."""

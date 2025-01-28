@@ -32,13 +32,13 @@ def main():
 
     # Initialize components
     recorder = AudioRecorder()
+    opengl_animation = OpenGLAnimation()  # Create an instance of OpenGLAnimation
     tts_worker = TTSWorker(
-        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0", opengl_animation)
     wake_word_detector = WakeWordDetector(
         PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
     whisper_transcriber = WhisperTranscriber()
     llm_processor = LLMProcessor(MODEL, AI_NAME, USER_NAME)
-    opengl_animation = OpenGLAnimation()
 
     # Start TTS worker
     tts_worker.start()

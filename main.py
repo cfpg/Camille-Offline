@@ -51,6 +51,11 @@ def main():
             if not opengl_animation.render():
                 break
             time.sleep(1/60)  # Limit frame rate to 60 FPS and reduce CPU usage
+
+            # Check for state changes from TTS worker
+            if tts_worker.state_event.is_set():
+                tts_worker.state_event.clear()
+                opengl_animation.set_state(tts_worker.current_state)
     except KeyboardInterrupt:
         print("\nExiting...")
     finally:

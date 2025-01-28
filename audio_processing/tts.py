@@ -1,5 +1,6 @@
 import pyttsx4
 import multiprocessing
+from threading import Event
 
 
 class TTSWorker:
@@ -13,6 +14,7 @@ class TTSWorker:
         self.voice_id = voice_id
         self.queue = multiprocessing.Queue()
         self.process = None
+        self.tts_finished_event = Event()
 
     def tts_worker(self, queue):
         """Worker function to handle TTS in a separate process."""
@@ -30,7 +32,9 @@ class TTSWorker:
 
             print(f"Queuing phrase: {phrase}")
             engine.say(phrase)
+            self.tts_finished_event.set()  # Notify main thread TTS has started
             engine.runAndWait()
+            self.tts_finished_event.clear()  # Notify main thread TTS is finished
             print(f"Finished processing TTS.")
 
     def start(self):
@@ -40,8 +44,11 @@ class TTSWorker:
         self.process.start()
 
     def speak(self, phrase):
-        """Add a phrase to the TTS queue."""
+        """Add a phrase to the TTS queue and set state in main thread."""
         self.queue.put(phrase)
+        if not self.tts_finished_event.is_set():
+            # Set animation state to talking immediately
+            opengl_animation.set_state(2)  # Set state to talking
 
     def stop(self):
         """Stop the TTS worker process gracefully."""

@@ -22,10 +22,9 @@ def voice_chat_loop(opengl_animation, recorder, wake_word_detector, whisper_tran
                 opengl_animation.set_state(0)  # Set state to waiting
                 continue
 
-            opengl_animation.set_state(2)  # Set state to talking
             response = llm_processor.process_input(transcribed_text)
             tts_worker.speak(response)
-            opengl_animation.set_state(0)  # Set state to waiting
+
         time.sleep(0.1) # Reduce CPU usage in the thread
         
 def main():
@@ -47,19 +46,19 @@ def main():
 
     voice_chat_thread = threading.Thread(target=voice_chat_loop, args=(
         opengl_animation, recorder, wake_word_detector, whisper_transcriber, tts_worker, llm_processor))
-    voice_chat_thread.daemon = True # Allow main thread to exit without waiting for this thread
+    voice_chat_thread.daemon = True  # Allow main thread to exit without waiting for this thread
     voice_chat_thread.start()
 
     try:
         while True:
             if not opengl_animation.render():
                 break
-            time.sleep(1/60) # Limit frame rate to 60 FPS and reduce CPU usage
+            time.sleep(1/60)  # Limit frame rate to 60 FPS and reduce CPU usage
     except KeyboardInterrupt:
         print("\nExiting...")
     finally:
-        opengl_animation.running = False # Signal thread to stop
-        voice_chat_thread.join(timeout=2) # Give thread a moment to stop
+        opengl_animation.running = False  # Signal thread to stop
+        voice_chat_thread.join(timeout=2)  # Give thread a moment to stop
         tts_worker.stop()
         opengl_animation.stop()
         recorder.audio.terminate()

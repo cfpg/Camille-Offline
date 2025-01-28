@@ -33,11 +33,13 @@ class TTSWorker:
                 break
 
             print(f"Queuing phrase: {phrase}")
+            self.animation.set_state(1)  # Set state to listening
             engine.say(phrase)
             self.tts_finished_event.set()  # Notify main thread TTS has started
             engine.runAndWait()
             self.tts_finished_event.clear()  # Notify main thread TTS is finished
             print(f"Finished processing TTS.")
+            self.animation.set_state(0)  # Set state to waiting
 
     def start(self):
         """Start the TTS worker process."""

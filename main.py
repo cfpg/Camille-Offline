@@ -13,13 +13,11 @@ from animation.opengl_animation import OpenGLAnimation
 def voice_chat_loop(opengl_animation, recorder, wake_word_detector, whisper_transcriber, tts_worker, llm_processor):
     while opengl_animation.running:
         if wake_word_detector.listen_for_wake_phrase():
-            opengl_animation.set_state(1)  # Set state to listening
             audio_file = recorder.record_audio()
             transcribed_text = whisper_transcriber.transcribe(audio_file)
 
             if not transcribed_text or len(transcribed_text.strip()) < 4:
                 tts_worker.speak("I didn't hear anything.")
-                opengl_animation.set_state(0)  # Set state to waiting
                 continue
 
             response = llm_processor.process_input(transcribed_text)

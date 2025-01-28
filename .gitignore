@@ -2,4 +2,4 @@ temp_audio.wav
 .env
 __pycache__
 .aider*
-.aider.chat.history.md
+app.log

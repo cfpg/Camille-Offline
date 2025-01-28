@@ -10,7 +10,7 @@ class TTSWorker:
 
         Args:
             voice_id (str): The voice ID for the TTS engine.
-            animation: An instance of OpenGLAnimation to handle state changes.
+            animation: An instance of OpenGLAnimation to handle state changes. Can be None.
         """
         self.voice_id = voice_id
         self.queue = multiprocessing.Queue()
@@ -33,13 +33,15 @@ class TTSWorker:
                 break
 
             print(f"Queuing phrase: {phrase}")
-            self.animation.set_state(1)  # Set state to listening
+            if self.animation:
+                self.animation.set_state(1)  # Set state to listening
             engine.say(phrase)
             self.tts_finished_event.set()  # Notify main thread TTS has started
             engine.runAndWait()
             self.tts_finished_event.clear()  # Notify main thread TTS is finished
             print(f"Finished processing TTS.")
-            self.animation.set_state(0)  # Set state to waiting
+            if self.animation:
+                self.animation.set_state(0)  # Set state to waiting
 
     def start(self):
         """Start the TTS worker process."""
@@ -52,7 +54,8 @@ class TTSWorker:
         self.queue.put(phrase)
         if not self.tts_finished_event.is_set():
             # Set animation state to talking immediately
-            self.animation.set_state(2)  # Set state to talking
+            if self.animation:
+                self.animation.set_state(2)  # Set state to talking
 
     def stop(self):
         """Stop the TTS worker process gracefully."""

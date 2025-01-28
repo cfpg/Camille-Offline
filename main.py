@@ -32,7 +32,7 @@ def main():
     recorder = AudioRecorder()
     opengl_animation = OpenGLAnimation()  # Create an instance of OpenGLAnimation
     tts_worker = TTSWorker(
-        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0", opengl_animation)
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0", None)
     wake_word_detector = WakeWordDetector(
         PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
     whisper_transcriber = WhisperTranscriber()
@@ -40,7 +40,6 @@ def main():
 
     # Start TTS worker
     tts_worker.start()
-    opengl_animation.start()
 
     voice_chat_thread = threading.Thread(target=voice_chat_loop, args=(
         opengl_animation, recorder, wake_word_detector, whisper_transcriber, tts_worker, llm_processor))

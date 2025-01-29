@@ -3,7 +3,7 @@ out vec4 fragColor;
 
 uniform float iTime;           // Time in seconds
 uniform vec2 iResolution;      // Viewport resolution (width, height)
-uniform int state;            // State (0 = waiting, 1 = listening, 2 = speaking)
+uniform int state;            // State (0 = waiting, 1 = listening, 2 = speaking, 3 = thinking)
 uniform float transitionTime;  // Time since last state change
 
 // Function to generate one layer of particles
@@ -15,11 +15,15 @@ vec4 generateLayer(vec2 fragCoord, int targetState, vec3 layerStartColor, vec3 l
     int particleCount;
     
     if (targetState == 0) {
-        particleCount = int(float(baseParticleCount) * 0.25);
+        particleCount = int(float(baseParticleCount) * 0.15);
     } else if (targetState == 1) {
         particleCount = int(float(baseParticleCount) * 0.50);
+    } else if (targetState == 2) {
+        particleCount = int(float(baseParticleCount) * 1);
+    } else if (targetState == 3) {
+        particleCount = int(float(baseParticleCount) * 2.50);
     } else {
-        particleCount = baseParticleCount;
+        particleCount = 0;
     }
     
     vec2 s = iResolution.xy;
@@ -80,12 +84,19 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec3(0.0, 0.5, 0.0),  // Dark green
         1.0
     );
+
+    vec4 thinkingLayer = generateLayer(fragCoord, 3,
+        vec3(1.0, 1.0, 1.0),  // White
+        vec3(0.5, 0.5, 0.5),  // Grey
+        1.0
+    );
     
     // Blend the layers together
     vec4 finalOutput = vec4(0.0);
     finalOutput += waitingLayer;
     finalOutput += listeningLayer;
     finalOutput += speakingLayer;
+    finalOutput += thinkingLayer;
     
     fragColor = finalOutput;
 }

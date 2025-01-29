@@ -19,10 +19,10 @@ class TTSWorker:
         self.queue = self.ctx.Queue()
         self.process = None
         self.state_event = self.ctx.Event()
-        self.current_state = self.ctx.Value('i', 0)
+        self.state_dict = self.ctx.Manager().dict({"speaking": False})
         logger.info(f"TTSWorker initialized with voice_id: {voice_id}")
 
-    def tts_worker(self, queue, state_event, current_state):
+    def tts_worker(self, queue, state_event, state_dict):
         """Worker function to handle TTS in a separate process."""
         logger.info("TTS worker process starting")
         try:
@@ -40,17 +40,16 @@ class TTSWorker:
                         break
 
                     logger.info(f"Processing phrase: {phrase}")
-                    with current_state.get_lock():
-                        current_state.value = 2
+                    state_dict["speaking"] = True
                     state_event.set()
 
                     engine.say(phrase)
                     engine.runAndWait()
+
+                    state_dict["speaking"] = False
+                    state_event.set()
                     
                     logger.info("TTS processing complete")
-                    with current_state.get_lock():
-                        current_state.value = 0
-                    state_event.set()
 
                 except Exception as e:
                     logger.error(f"Error processing TTS phrase: {str(e)}", exc_info=True)
@@ -65,7 +64,7 @@ class TTSWorker:
         logger.info("Starting TTS worker process")
         self.process = self.ctx.Process(
             target=self.tts_worker,
-            args=(self.queue, self.state_event, self.current_state)
+            args=(self.queue, self.state_event, self.state_dict)
         )
         self.process.daemon = True  # Make process daemon so it exits when main process exits
         self.process.start()
@@ -76,9 +75,6 @@ class TTSWorker:
         try:
             logger.info(f"Queueing phrase: {phrase}")
             self.queue.put(phrase)
-            with self.current_state.get_lock():
-                self.current_state.value = 2
-            self.state_event.set()
         except Exception as e:
             logger.error(f"Error queueing phrase: {str(e)}", exc_info=True)
 
@@ -89,6 +85,12 @@ class TTSWorker:
             try:
                 self.queue.put(None)
                 self.process.join(timeout=5)  # Wait up to 5 seconds for process to finish
+
+                # Force animation state back to waiting
+                with self.current_state.get_lock():
+                    self.current_state.value = 0
+                self.state_event.set()
+
                 if self.process.is_alive():
                     logger.warning("TTS worker process didn't terminate gracefully, terminating forcefully")
                     self.process.terminate()

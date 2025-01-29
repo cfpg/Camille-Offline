@@ -28,18 +28,20 @@ def voice_chat_loop(opengl_animation, recorder, wake_word_detector, whisper_tran
         try:
             if wake_word_detector.listen_for_wake_phrase():
                 logger.info("Wake word detected")
-                opengl_animation.set_state(1)  # Set listening state
+                opengl_animation.set_state("listening", True)
                 audio_file = recorder.record_audio()
                 transcribed_text = whisper_transcriber.transcribe(audio_file)
-                opengl_animation.set_state(0)  # Back to waiting state
+                opengl_animation.set_state("listening", False)
 
                 if not transcribed_text or len(transcribed_text.strip()) < 4:
                     logger.warning("No or too short transcription detected")
                     tts_worker.speak("I didn't hear anything.")
                     continue
 
+                opengl_animation.set_state("thinking", True)
                 logger.info(f"Transcribed text: {transcribed_text}")
                 response = llm_processor.process_input(transcribed_text)
+                opengl_animation.set_state("thinking", False)
                 logger.info(f"LLM response: {response}")
                 tts_worker.speak(response)
 
@@ -90,11 +92,9 @@ def main():
 
             # Check for state changes from TTS worker
             if tts_worker.state_event.is_set():
-                current_state = tts_worker.current_state.value
-                logger.info(f"State change detected: {current_state}")
+                logger.info(f"TTSWorker sent a State Event change: {tts_worker.state_dict}")
+                opengl_animation.set_state("speaking", tts_worker.state_dict["speaking"])
                 tts_worker.state_event.clear()
-                if current_state != 1: # Only change state if it is not listening
-                    opengl_animation.set_state(current_state)
 
             # Limit frame rate (optional, GLFW's swap interval might already handle this)
             time.sleep(1/60)

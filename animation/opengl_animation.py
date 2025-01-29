@@ -9,13 +9,45 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+class StateTransition:
+    def __init__(self, name, color_start, color_end=None, transition_duration=3.0):
+        self.name = name
+        self.color_start = color_start
+        self.color_end = color_end or (0, 0, 0)
+        self.transition_duration = transition_duration
+        self.is_enabled = False
+        self.transition_start_time = 0
+        self.transitioning = False
+        self.transition_direction = 1  # 1 for fade in, -1 for fade out
+
+    def get_current_color(self, current_time):
+        if not self.transitioning:
+            return self.color_start if self.is_enabled else self.color_end
+        
+        progress = min((current_time - self.transition_start_time) / self.transition_duration, 1.0)
+        if self.transition_direction < 0:
+            progress = 1.0 - progress
+        
+        return tuple(
+            start + (end - start) * progress
+            for start, end in zip(
+                self.color_end if self.transition_direction < 0 else self.color_start,
+                self.color_start if self.transition_direction < 0 else self.color_end
+            )
+        )
+
 class OpenGLAnimation:
     def __init__(self):
-        self.state = {"waiting": True, "listening": False, "speaking": False, "thinking": False}
+        self.transitions = {
+            "waiting": StateTransition("waiting", (0.0, 0.0, 1.0)),
+            "listening": StateTransition("listening", (1.0, 0.0, 0.0)),
+            "speaking": StateTransition("speaking", (0.0, 1.0, 0.0)),
+            "thinking": StateTransition("thinking", (1.0, 1.0, 1.0))
+        }
+        self.transitions["waiting"].is_enabled = True  # Set waiting as default state
         self.running = False
         self.shader_program = None
         self.start_time = time.time()
-        self.last_state_change = time.time()
         self.window = None
         self.vao = None
         self.vbo = None
@@ -123,19 +155,36 @@ class OpenGLAnimation:
         if not self.running or glfw.window_should_close(self.window):
             return False
 
+        current_time = time.time()
         glfw.poll_events()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glUseProgram(self.shader_program)
 
-        state_int = 0
-        if self.state["thinking"]: state_int = 3
-        elif self.state["speaking"]: state_int = 2
-        elif self.state["listening"]: state_int = 1
+        # Update transitions and send to shader
+        other_states_active = False
+        for i, (name, transition) in enumerate(self.transitions.items()):
+            if name != "waiting" and transition.is_enabled:
+                other_states_active = True
 
-        glUniform1f(glGetUniformLocation(self.shader_program, "iTime"), time.time() - self.start_time)
-        glUniform1i(glGetUniformLocation(self.shader_program, "state"), state_int)
-        glUniform1f(glGetUniformLocation(self.shader_program, "transitionTime"), time.time() - self.last_state_change)
+            if transition.transitioning:
+                color = transition.get_current_color(current_time)
+                progress = (current_time - transition.transition_start_time) / transition.transition_duration
+                if progress >= 1.0:
+                    transition.transitioning = False
+            else:
+                color = transition.get_current_color(current_time)
 
+            # For waiting state, only enable if no other states are active
+            is_enabled = transition.is_enabled
+            if name == "waiting":
+                is_enabled = is_enabled and not other_states_active
+
+            base_uniform = f"states[{i}]"
+            glUniform1i(glGetUniformLocation(self.shader_program, f"{base_uniform}.enabled"), is_enabled)
+            glUniform3f(glGetUniformLocation(self.shader_program, f"{base_uniform}.color"), *color)
+
+        glUniform1f(glGetUniformLocation(self.shader_program, "iTime"), current_time - self.start_time)
+        
         glBindVertexArray(self.vao)
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
         glBindVertexArray(0)
@@ -152,14 +201,30 @@ class OpenGLAnimation:
             state_name (str): Name of the state to modify
             value (bool): New value for the state
         """
-        if state_name not in self.state:
-            logger.error(f"Invalid state name: {state_name}")
-            return
-        
-        if self.state[state_name] != value:
-            self.last_state_change = time.time()
-            self.state[state_name] = value
-            logger.info(f"OpenGL Animation State change - {state_name}: {value} (Full state: {self.state})")
+        transition = self.transitions[state_name]
+        if transition.is_enabled != value:
+            current_time = time.time()
+            transition.is_enabled = value
+            transition.transition_start_time = current_time
+            transition.transitioning = True
+            transition.transition_direction = 1 if value else -1
+            
+            # Handle waiting state
+            if state_name != "waiting":
+                any_active = any(t.is_enabled for name, t in self.transitions.items() if name != "waiting")
+                waiting_transition = self.transitions["waiting"]
+                if any_active and waiting_transition.is_enabled:
+                    waiting_transition.is_enabled = False
+                    waiting_transition.transition_start_time = current_time
+                    waiting_transition.transitioning = True
+                    waiting_transition.transition_direction = -1
+                elif not any_active and not waiting_transition.is_enabled:
+                    waiting_transition.is_enabled = True
+                    waiting_transition.transition_start_time = current_time
+                    waiting_transition.transitioning = True
+                    waiting_transition.transition_direction = 1
+            
+            logger.info(f"OpenGL Animation State change - {state_name}: {value}")
         
 
     def stop(self):

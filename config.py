@@ -6,12 +6,16 @@ load_dotenv()
 
 # General configuration
 DEBUG = True
-MODEL = "llama-3.2-3b-instruct"
+MODEL_NAME = os.getenv("MODEL_NAME")
 AI_NAME = "Camille"
 USER_NAME = "Carlos"
 PICOVOICE_ACCESS_KEY = os.getenv("PICOVOICE_ACCESS_KEY")
 OPENAI_API_BASE = "http://localhost:1234/v1"
 OPENAI_KEY = "not-needed"
+
+if not MODEL_NAME:
+    raise ValueError(
+        "MODEL_NAME env var is required to run this software. Please add it to .env")
 
 if not PICOVOICE_ACCESS_KEY:
     raise ValueError(

@@ -12,10 +12,15 @@ USER_NAME = "Carlos"
 PICOVOICE_ACCESS_KEY = os.getenv("PICOVOICE_ACCESS_KEY")
 OPENAI_API_BASE = "http://localhost:1234/v1"
 OPENAI_KEY = "not-needed"
+DB_URI = os.getenv("DB_URI")
 
 if not PICOVOICE_ACCESS_KEY:
     raise ValueError(
         "PICOVOICE_ACCESS_KEY env var is required to run this software. Please add it to .env")
+
+if not DB_URI:
+    raise ValueError(
+        "DB_URI env var is required to run this software. Please add it to .env")
 
 # Tools configuration
 OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")

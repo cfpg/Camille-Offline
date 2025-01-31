@@ -88,7 +88,7 @@ class TTSWorker:
 
                 # Force animation state back to waiting
                 state_dict["speaking"] = False
-                    state_event.set()
+                state_event.set()
 
                 if self.process.is_alive():
                     logger.warning("TTS worker process didn't terminate gracefully, terminating forcefully")

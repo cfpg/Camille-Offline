@@ -1,7 +1,7 @@
 import time
 import threading
 import logging
-from config import DEBUG, MODEL, AI_NAME, USER_NAME, PICOVOICE_ACCESS_KEY
+from config import DEBUG, MODEL_NAME, AI_NAME, USER_NAME, PICOVOICE_ACCESS_KEY
 from audio_processing.recorder import AudioRecorder
 from audio_processing.wake_word import WakeWordDetector
 from audio_processing.tts import TTSWorker
@@ -12,7 +12,7 @@ from animation.opengl_animation import OpenGLAnimation
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('app.log'),
@@ -22,10 +22,20 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-def voice_chat_loop(opengl_animation, recorder, wake_word_detector, whisper_transcriber, tts_worker, llm_processor):
+def voice_chat_loop(opengl_animation):
     logger.info("Starting voice chat loop")
-    while opengl_animation.running:
-        try:
+
+    try:
+        # Initialize components inside the thread
+        recorder = AudioRecorder()
+        tts_worker = TTSWorker("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
+        wake_word_detector = WakeWordDetector(PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
+        whisper_transcriber = WhisperTranscriber()
+        llm_processor = LLMProcessor(MODEL_NAME, AI_NAME, USER_NAME)
+        tts_worker.start()
+        logger.info("All voice chat components initialized")
+
+        while opengl_animation.running:
             if wake_word_detector.listen_for_wake_phrase():
                 logger.info("Wake word detected")
                 opengl_animation.set_state("listening", True)
@@ -44,11 +54,22 @@ def voice_chat_loop(opengl_animation, recorder, wake_word_detector, whisper_tran
                 opengl_animation.set_state("thinking", False)
                 logger.info(f"LLM response: {response}")
                 tts_worker.speak(response)
+            
+            # Check for state changes from TTS worker
+            if tts_worker.state_event.is_set():
+                logger.info(f"TTSWorker sent a State Event change: {tts_worker.state_dict}")
+                opengl_animation.set_state("speaking", tts_worker.state_dict["speaking"])
+                tts_worker.state_event.clear()
 
             time.sleep(0.1)
 
-        except Exception as e:
-            logger.error(f"Error in voice chat loop: {str(e)}", exc_info=True)
+    except Exception as e:
+        logger.error(f"Error in voice chat loop: {str(e)}", exc_info=True)
+    finally:
+        if recorder:
+             recorder.audio.terminate()
+        tts_worker.stop()
+        logger.info("Voice chat thread stopped")
 
 def main():
     logger.info("Starting application")
@@ -65,21 +86,8 @@ def main():
             logger.error("OpenGL Animation failed to initialize properly")
             return
 
-        # Initialize other components
-        recorder = AudioRecorder()
-        tts_worker = TTSWorker(
-            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
-        wake_word_detector = WakeWordDetector(
-            PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
-        whisper_transcriber = WhisperTranscriber()
-        llm_processor = LLMProcessor(MODEL, AI_NAME, USER_NAME)
-
-        # Start TTS worker
-        logger.info("Starting TTS worker")
-        tts_worker.start()
-
         voice_chat_thread = threading.Thread(target=voice_chat_loop, args=(
-            opengl_animation, recorder, wake_word_detector, whisper_transcriber, tts_worker, llm_processor))
+            opengl_animation,))
         voice_chat_thread.daemon = True  # Make thread daemon so it exits with main thread
         voice_chat_thread.start()
         logger.info("Voice chat thread started")
@@ -89,12 +97,6 @@ def main():
             if not opengl_animation.render():
                 logger.info("OpenGL animation stopped rendering")
                 break
-
-            # Check for state changes from TTS worker
-            if tts_worker.state_event.is_set():
-                logger.info(f"TTSWorker sent a State Event change: {tts_worker.state_dict}")
-                opengl_animation.set_state("speaking", tts_worker.state_dict["speaking"])
-                tts_worker.state_event.clear()
 
             # Limit frame rate (optional, GLFW's swap interval might already handle this)
             time.sleep(1/60)
@@ -108,9 +110,7 @@ def main():
         logger.info("Cleaning up resources")
         opengl_animation.running = False
         voice_chat_thread.join(timeout=2)
-        tts_worker.stop()
         opengl_animation.stop()
-        recorder.audio.terminate()
         logger.info("Application shutdown complete")
 
 if __name__ == "__main__":

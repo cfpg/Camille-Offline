@@ -87,9 +87,8 @@ class TTSWorker:
                 self.process.join(timeout=5)  # Wait up to 5 seconds for process to finish
 
                 # Force animation state back to waiting
-                with self.current_state.get_lock():
-                    self.current_state.value = 0
-                self.state_event.set()
+                state_dict["speaking"] = False
+                    state_event.set()
 
                 if self.process.is_alive():
                     logger.warning("TTS worker process didn't terminate gracefully, terminating forcefully")

@@ -1,5 +1,5 @@
-from langchain_community.chat_models import ChatOpenAI
-from langchain.agents import initialize_agent
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import SystemMessage
 from tools import get_all_tools
@@ -20,6 +20,7 @@ class LLMProcessor:
         self.model = model
         self.ai_name = ai_name
         self.user_name = user_name
+        self.thread_id = "main-conversation"
 
         # Define system prompt as a single source of truth
         self.system_prompt = (
@@ -60,7 +61,6 @@ class LLMProcessor:
         # Initialize memory
         self.memory = ConversationBufferMemory(
             memory_key="chat_history", return_messages=True)
-        self._add_system_message()
 
         # Initialize LLM
         self.llm = ChatOpenAI(
@@ -71,19 +71,10 @@ class LLMProcessor:
         )
 
         # Initialize agent with all registered tools
-        self.agent = initialize_agent(
-            get_all_tools(),
+        self.agent = create_react_agent(
             self.llm,
-            agent="chat-conversational-react-description",
-            memory=self.memory,
-            verbose=True,
-            handle_parsing_errors=True
+            tools=get_all_tools()
         )
-
-    def _add_system_message(self):
-        """Add the system message to memory."""
-        self.memory.chat_memory.add_message(
-            SystemMessage(content=self.system_prompt))
 
     def clear_memory(self):
         """
@@ -91,7 +82,6 @@ class LLMProcessor:
         Useful for starting a new conversation context.
         """
         self.memory.clear()
-        self._add_system_message()
 
     def process_input(self, input_text):
         """
@@ -104,6 +94,20 @@ class LLMProcessor:
             str: The AI's response.
         """
         print(f"{colors['cyan']}User input: {input_text}{colors['reset']}")
-        # Process input with agent
-        response = self.agent.run(input_text)
-        return response
+
+        # Format input for the agent
+        input_message = HumanMessage(content=input_text)
+        config = {"configurable": {"thread_id": self.thread_id}}
+        
+        response = None
+        for step in self.agent.stream(
+            {"messages": [input_message]}, 
+            config=config,
+            stream_mode="values"
+        ):
+            if "messages" in step:
+                messages = step["messages"]
+                if messages:
+                    response = messages[-1].content if hasattr(messages[-1], 'content') else messages[-1][1]
+        
+        return response or "I couldn't process that request."

@@ -1,10 +1,13 @@
-from tools import register_tool
+import logging
+from typing import Optional
 import requests
-from config import OPENWEATHERMAP_API_KEY, OPENWEATHERMAP_DEFAULT_CITY
+from . import register_tool
+from config import Config
 
+logger = logging.getLogger(__name__)
 
 @register_tool
-def get_weather(city: str = None) -> str:
+def get_weather(city: Optional[str] = None) -> str:
     """
     Get the current weather for a specific city using OpenWeatherMap API.
     If no city is provided or city is 'current', returns weather for the default city.
@@ -19,35 +22,35 @@ def get_weather(city: str = None) -> str:
     Returns:
         Weather information or error message
     """
-    if not OPENWEATHERMAP_API_KEY:
-        return "Weather API is not configured. Please set OPENWEATHERMAP_API_KEY in .env file."
+    if not Config.OPENWEATHERMAP_API_KEY:
+        return "Weather API is not configured"
 
-    # Handle "current city" requests
-    if city is None or city.lower() in ["current", "current city", "my city"]:
-        target_city = OPENWEATHERMAP_DEFAULT_CITY
-        default_city_note = f" (using default city {OPENWEATHERMAP_DEFAULT_CITY})"
-    else:
-        target_city = city
-        default_city_note = ""
+    target_city = (city if city and city.lower() not in ["current", "current city", "my city"]
+                  else Config.OPENWEATHERMAP_DEFAULT_CITY)
+    
+    if not target_city:
+        return "No city specified and no default city configured"
 
     try:
-        # Make API request
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={target_city}&appid={OPENWEATHERMAP_API_KEY}&units=metric"
-        response = requests.get(url)
+        response = requests.get(
+            "http://api.openweathermap.org/data/2.5/weather",
+            params={
+                "q": target_city,
+                "appid": Config.OPENWEATHERMAP_API_KEY,
+                "units": "metric"
+            },
+            timeout=10
+        )
+        response.raise_for_status()
         data = response.json()
 
-        # Handle API errors
-        if response.status_code != 200:
-            error_msg = data.get('message', 'Unknown error')
-            return f"Could not get weather for {target_city}: {error_msg}"
-
-        # Extract weather data
         weather = data['weather'][0]['description']
         temp = data['main']['temp']
         humidity = data['main']['humidity']
 
-        return (f"The weather in {target_city}{default_city_note} is {temp}°C with {weather}. "
+        return (f"The weather in {target_city} is {temp}°C with {weather}. "
                 f"Humidity is {humidity}%.")
 
-    except Exception as e:
+    except requests.RequestException as e:
+        logger.error(f"Weather API request failed: {e}")
         return f"Error getting weather: {str(e)}"

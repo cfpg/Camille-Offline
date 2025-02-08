@@ -3,7 +3,6 @@ import logging
 import numpy as np
 import pyaudio
 from utils.colors import colors
-from config import DEBUG
 
 
 logger = logging.getLogger(__name__)

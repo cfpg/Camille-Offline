@@ -1,7 +1,7 @@
 from tools import register_tool
 import requests
 import os
-from config import BRAVE_SEARCH_API_TOKEN
+from config import Config
 
 
 SETUP_INSTRUCTIONS = """
@@ -34,12 +34,12 @@ def brave_search(query: str) -> str:
     Returns:
         Summary of search results or error message
     """
-    if not BRAVE_SEARCH_API_TOKEN:
+    if not Config.BRAVE_SEARCH_API_TOKEN:
         return _get_setup_message("Brave Search is not yet configured on this system")
 
     try:
         headers = {
-            "X-Subscription-Token": BRAVE_SEARCH_API_TOKEN,
+            "X-Subscription-Token": Config.BRAVE_SEARCH_API_TOKEN,
             "Accept": "application/json",
         }
         

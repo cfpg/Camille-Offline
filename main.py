@@ -1,7 +1,7 @@
 import time
 import threading
 import logging
-from config import DEBUG, MODEL_NAME, AI_NAME, USER_NAME, PICOVOICE_ACCESS_KEY
+from config import Config
 from audio_processing.recorder import AudioRecorder
 from audio_processing.wake_word import WakeWordDetector
 from audio_processing.tts import TTSWorker
@@ -12,7 +12,7 @@ from animation.opengl_animation import OpenGLAnimation
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('app.log'),
@@ -29,9 +29,9 @@ def voice_chat_loop(opengl_animation):
         # Initialize components inside the thread
         recorder = AudioRecorder()
         tts_worker = TTSWorker("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
-        wake_word_detector = WakeWordDetector(PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
+        wake_word_detector = WakeWordDetector(Config.PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
         whisper_transcriber = WhisperTranscriber()
-        llm_processor = LLMProcessor(MODEL_NAME, AI_NAME, USER_NAME)
+        llm_processor = LLMProcessor(Config.MODEL_NAME, Config.AI_NAME, Config.USER_NAME)
         tts_worker.start()
         logger.info("All voice chat components initialized")
 

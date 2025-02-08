@@ -1,19 +1,29 @@
 from importlib import import_module
 from pathlib import Path
-from typing import Dict, Callable
+from typing import Dict, Any, Callable
 from utils.log import print_log
 from config import *  # Import all config here
+from nlp.types import ToolFunc
 
-_tools: Dict[str, Callable] = {}
+_tools: Dict[str, ToolFunc] = {}
 
-def register_tool(func: Callable) -> Callable:
+def register_tool(func: ToolFunc) -> ToolFunc:
+    """
+    Register a tool function.
+    The function must return a string and can take any parameters.
+    """
     _tools[func.__name__] = func
     return func
 
-def get_all_tools() -> Dict[str, Callable]:
+def get_all_tools() -> Dict[str, ToolFunc]:
+    """
+    Get a copy of all registered tools.
+    Returns:
+        Dict[str, ToolFunc]: Dictionary of tool name to tool function mappings
+    """
     return _tools.copy()
 
-def auto_discover_tools():
+def auto_discover_tools() -> None:
     """Automatically discover and import all tools in the tools directory."""
     tools_dir = Path(__file__).parent
     for file in tools_dir.glob("*.py"):

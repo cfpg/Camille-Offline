@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any
 from .memory import Memory
 from .tool import Tool
 from .types import ToolFunc
@@ -9,7 +9,7 @@ from .api_client import OpenAIClient
 from tools import get_all_tools
 from config import Config
 from utils.colors import colors
-
+from utils.log import print_log
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,7 @@ class LLMProcessor:
         self._initialize_system_prompt()
     
     def _initialize_system_prompt(self) -> None:
-        tools_description = self._get_tools_description()
-        self.system_prompt = get_system_prompt(self.ai_name, tools_description)
+        self.system_prompt = get_system_prompt(self.ai_name)
         self.memory.add_message("system", self.system_prompt)
 
     def register_tool(self, func: ToolFunc, name: Optional[str] = None, description: Optional[str] = None):
@@ -48,45 +47,53 @@ class LLMProcessor:
             logger.error(f"Failed to register tools: {e}")
             raise
 
-    def _get_tools_description(self) -> str:
-        tool_descriptions = []
-        for name, tool in self.tools.items():
-            signature = str(tool.func.__annotations__)  # Get function signature
-            tool_descriptions.append(
-                f"Tool: {name}\n"
-                f"Description: {tool.description}\n"
-                f"Parameters: {signature}\n"
-            )
-        return "\n".join(tool_descriptions)
+    def _get_openai_tools(self) -> List[Dict[str, Any]]:
+        return [tool.to_openai_schema() for tool in self.tools.values()]
 
-    def _handle_tool_call(self, response: str) -> str:            
+    def _handle_tool_call(self, response: Dict[str, Any]) -> str:
         try:
-            # Attempt to parse the entire response as a JSON object
-            tool_call = json.loads(response)
+            # If no tool calls, return the content directly
+            if "tool_calls" not in response:
+                return response.get("content", "I apologize, but I couldn't process that request.")
 
-            # Check if the expected keys "tool" and "args" are present
-            if "tool" not in tool_call or "args" not in tool_call:
-                return response  # Not a tool call, return original response
+            # Handle tool calls
+            tool_calls = response.get("tool_calls", [])
+            if not tool_calls:
+                return response.get("content", "I apologize, but I couldn't process that request.")
 
-            tool_name = tool_call["tool"]
-            tool_args = tool_call.get("args", {})
+            # Process each tool call
+            for tool_call in tool_calls:
+                if tool_call["type"] != "function":
+                    continue
 
-            if tool_name not in self.tools:
-                return f"I apologize, but I don't have access to the {tool_name} tool."
+                function_call = tool_call["function"]
+                tool_name = function_call["name"]
+                tool_args = json.loads(function_call["arguments"])
 
-            logger.debug(f"Calling tool {tool_name} with args {tool_args}")
-            tool_result = self.tools[tool_name](**tool_args)
+                if tool_name not in self.tools:
+                    return f"I apologize, but I don't have access to the {tool_name} tool."
 
-            # Add tool result to memory
-            self.memory.add_message("system", f"Tool {tool_name} returned: {tool_result}")
+                print_log(f"Calling tool {tool_name} with args {tool_args}", "yellow")
+                tool_result = self.tools[tool_name](**tool_args)
+
+                # Add tool result to memory
+                self.memory.add_message(
+                    "tool", 
+                    json.dumps({
+                        "tool_call_id": tool_call["id"],
+                        "name": tool_name,
+                        "result": tool_result
+                    })
+                )
 
             # Get new response from LLM with tool results
             messages = self.memory.get_messages()
-            return self.api_client.get_completion(messages)
+            final_response = self.api_client.get_completion(
+                messages, 
+                tools=self._get_openai_tools()
+            )
+            return final_response.get("content", "I apologize, but I couldn't process the tool results.")
 
-        except json.JSONDecodeError:
-            # If JSON decoding fails, it's not a tool call, return original response
-            return response
         except Exception as e:
             logger.error(f"Tool call failed: {e}")
             return f"I encountered an error while trying to help you: {str(e)}"
@@ -95,7 +102,10 @@ class LLMProcessor:
         self.memory.add_message("user", input_text)
         messages = self.memory.get_messages()
         
-        response = self.api_client.get_completion(messages)
+        response = self.api_client.get_completion(
+            messages, 
+            tools=self._get_openai_tools()
+        )
         final_response = self._handle_tool_call(response)
         
         self.memory.add_message("assistant", final_response)

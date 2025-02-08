@@ -55,13 +55,13 @@ class WakeWordDetector:
                     print_log(f"'Hey Camille' Wake phrase detected!", "cyan")
                     # Add the TTS request to the queue
                     self.tts_worker.speak(f"Yes {Config.USER_NAME}")
-                    return True
+                    return True # This tells voice_chat_loop to start recording for the user's input
                 elif keyword_index == 1:
                     print_log(f"'Camille Stop' Wake phrase detected!", "cyan")
                     # Add the TTS request to the queue
-                    self.tts_worker.stop()
+                    self.tts_worker.silence()
                     self.tts_worker.speak(f"Okay {Config.USER_NAME}")
-                    return True
+                    return False # This tells voice_chat_loop that the user wants to stop the conversation
         except KeyboardInterrupt:
             print("\nExiting wake phrase listener...")
             return False

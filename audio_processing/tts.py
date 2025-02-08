@@ -76,22 +76,34 @@ class TTSWorker:
         except Exception as e:
             print_log(f"Error queueing phrase: {str(e)}", "red")
 
+    def silence(self):
+        """Silence the TTS worker by clearing the queue and restarting the process."""
+        print_log("Silencing TTS Worker.", "orange")
+        self.stopForcefully()
+        self.start()
+    
     def stop(self):
         """Stop the TTS worker process gracefully."""
         if self.process and self.process.is_alive():
             print_log("Stopping TTS worker process")
             try:
                 self.queue.put(None)
-                self.process.join(timeout=5)  # Wait up to 5 seconds for process to finish
+                self.process.join(timeout=5)  # Wait up to 2 seconds for process to finish
 
                 # Force animation state back to waiting
                 self.state_dict["speaking"] = False
-                state_event.set()
+                self.state_event.set()
 
                 if self.process.is_alive():
-                    logger.warning("TTS worker process didn't terminate gracefully, terminating forcefully")
-                    self.process.terminate()
-                    self.process.join()
+                    self.stopForcefully()
             except Exception as e:
                 print_log(f"Error stopping TTS worker: {str(e)}", "red")
         print_log("TTS worker process stopped")
+    
+    def stopForcefully(self):
+        try:
+            print_log("TTS worker process didn't terminate gracefully, terminating forcefully", "red")
+            self.process.terminate()
+            self.process.join()
+        except Exception as e:
+            print_log(f"Error forcefully stopping TTS worker: {str(e)}", "red")

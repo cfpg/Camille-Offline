@@ -44,7 +44,7 @@ def voice_chat_loop(opengl_animation):
                 transcribed_text = whisper_transcriber.transcribe(audio_file)
                 opengl_animation.set_state("listening", False)
 
-                if not transcribed_text or len(transcribed_text.strip()) < 4:
+                if not transcribed_text or len(transcribed_text.strip()) < 3:
                     logger.warning("No or too short transcription detected")
                     tts_worker.speak("I didn't hear anything.")
                     continue

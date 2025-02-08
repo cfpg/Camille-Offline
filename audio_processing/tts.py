@@ -50,10 +50,10 @@ class TTSWorker:
                     print_log("TTS processing complete")
 
                 except Exception as e:
-                    logger.error(f"Error processing TTS phrase: {str(e)}", exc_info=True)
+                    print_log(f"Error processing TTS phrase: {str(e)}", "red")
 
         except Exception as e:
-            logger.error(f"Error in TTS worker process: {str(e)}", exc_info=True)
+            print_log(f"Error in TTS worker process: {str(e)}", "red")
         finally:
             print_log("TTS worker process shutting down")
 
@@ -74,7 +74,7 @@ class TTSWorker:
             print_log(f"Queueing phrase: {phrase}")
             self.queue.put(phrase)
         except Exception as e:
-            logger.error(f"Error queueing phrase: {str(e)}", exc_info=True)
+            print_log(f"Error queueing phrase: {str(e)}", "red")
 
     def stop(self):
         """Stop the TTS worker process gracefully."""
@@ -93,5 +93,5 @@ class TTSWorker:
                     self.process.terminate()
                     self.process.join()
             except Exception as e:
-                logger.error(f"Error stopping TTS worker: {str(e)}", exc_info=True)
+                print_log(f"Error stopping TTS worker: {str(e)}", "red")
         print_log("TTS worker process stopped")

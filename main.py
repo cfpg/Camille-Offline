@@ -29,11 +29,12 @@ def voice_chat_loop(opengl_animation):
         # Initialize components inside the thread
         recorder = AudioRecorder()
         tts_worker = TTSWorker("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
-        wake_word_detector = WakeWordDetector(Config.PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
+        wake_word_detector = WakeWordDetector(Config.PICOVOICE_ACCESS_KEY, ["wake_words/hey-camille.ppn", "wake_words/camille-stop.ppn"], tts_worker)
         whisper_transcriber = WhisperTranscriber()
         llm_processor = LLMProcessor(Config.MODEL_NAME, Config.AI_NAME, Config.USER_NAME)
         tts_worker.start()
         logger.info("All voice chat components initialized")
+        opengl_animation.set_state("waiting", True)
 
         while opengl_animation.running:
             if wake_word_detector.listen_for_wake_phrase():

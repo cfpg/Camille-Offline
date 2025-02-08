@@ -51,10 +51,16 @@ class WakeWordDetector:
                 if Config.DEBUG:
                     print_log(f"Heard:{colors['reset']} {keyword_index}", "blue")
 
-                if keyword_index >= 0:
-                    print_log(f"Wake phrase detected!", "cyan")
+                if keyword_index == 0:
+                    print_log(f"'Hey Camille' Wake phrase detected!", "cyan")
                     # Add the TTS request to the queue
                     self.tts_worker.speak(f"Yes {Config.USER_NAME}")
+                    return True
+                elif keyword_index == 1:
+                    print_log(f"'Camille Stop' Wake phrase detected!", "cyan")
+                    # Add the TTS request to the queue
+                    self.tts_worker.stop()
+                    self.tts_worker.speak(f"Okay {Config.USER_NAME}")
                     return True
         except KeyboardInterrupt:
             print("\nExiting wake phrase listener...")

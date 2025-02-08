@@ -8,3 +8,4 @@ PyOpenGL==3.1.9
 python-dotenv==1.0.1
 pyttsx4==3.0.15
 Requests==2.32.3
+selenium==4.28.1

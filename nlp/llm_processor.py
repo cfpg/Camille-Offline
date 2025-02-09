@@ -82,7 +82,8 @@ class LLMProcessor:
                     json.dumps({
                         "tool_call_id": tool_call["id"],
                         "name": tool_name,
-                        "result": tool_result
+                        "result": tool_result,
+                        "arguments": tool_args
                     })
                 )
 

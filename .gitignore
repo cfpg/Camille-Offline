@@ -3,4 +3,4 @@ temp_audio.wav
 __pycache__
 .aider*
 app.log
-*.db
+db/chat.db

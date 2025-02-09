@@ -64,12 +64,15 @@ def voice_chat_loop(opengl_animation):
         while opengl_animation.running:
             if not memory_manager.is_setup:
                 print_log("Running user memory setup", "cyan")
+                tts_worker.speak("Hello! It seems this is the first time we're meeting, I need to ask you a few questions to get to know you better.")
+                time.sleep(5) # sleeping to await tts to finish asking question
                 for question in memory_manager.get_setup_questions():
                     print_log(f"Asking: {question.question}", "cyan")
                     tts_worker.speak(f"Please answer the following: {question.question}")
-                    time.sleep(1) # sleeping to await tts to finish asking question
+                    time.sleep(3) # sleeping to await tts to finish asking question
                     setup_answer = record_and_transcribe()
                     if setup_answer:
+                        print_log(f"User answered: {setup_answer}", "cyan")
                         memory_manager.save_setup_question(question, setup_answer)
                 print_log("User memory setup complete", "cyan")
             

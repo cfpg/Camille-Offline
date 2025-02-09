@@ -44,7 +44,7 @@ class OpenGLAnimation:
             "speaking": StateTransition("speaking", (0.0, 1.0, 0.0)),
             "thinking": StateTransition("thinking", (1.0, 1.0, 1.0))
         }
-        self.transitions["waiting"].is_enabled = True  # Set waiting as default state
+        # self.transitions["waiting"].is_enabled = True  # Set waiting as default state
         self.running = False
         self.shader_program = None
         self.start_time = time.time()

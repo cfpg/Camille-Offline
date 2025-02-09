@@ -1,7 +1,7 @@
 import time
 import threading
 import logging
-from config import DEBUG, MODEL_NAME, AI_NAME, USER_NAME, PICOVOICE_ACCESS_KEY
+from config import Config
 from audio_processing.recorder import AudioRecorder
 from audio_processing.wake_word import WakeWordDetector
 from audio_processing.tts import TTSWorker
@@ -12,7 +12,7 @@ from animation.opengl_animation import OpenGLAnimation
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('app.log'),
@@ -29,11 +29,12 @@ def voice_chat_loop(opengl_animation):
         # Initialize components inside the thread
         recorder = AudioRecorder()
         tts_worker = TTSWorker("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
-        wake_word_detector = WakeWordDetector(PICOVOICE_ACCESS_KEY, ["hey-camille.ppn"], tts_worker)
+        wake_word_detector = WakeWordDetector(Config.PICOVOICE_ACCESS_KEY, ["wake_words/hey-camille.ppn", "wake_words/camille-stop.ppn"], tts_worker)
         whisper_transcriber = WhisperTranscriber()
-        llm_processor = LLMProcessor(MODEL_NAME, AI_NAME, USER_NAME)
+        llm_processor = LLMProcessor(Config.MODEL_NAME, Config.AI_NAME, Config.USER_NAME)
         tts_worker.start()
         logger.info("All voice chat components initialized")
+        opengl_animation.set_state("waiting", True)
 
         while opengl_animation.running:
             if wake_word_detector.listen_for_wake_phrase():
@@ -43,7 +44,7 @@ def voice_chat_loop(opengl_animation):
                 transcribed_text = whisper_transcriber.transcribe(audio_file)
                 opengl_animation.set_state("listening", False)
 
-                if not transcribed_text or len(transcribed_text.strip()) < 4:
+                if not transcribed_text or len(transcribed_text.strip()) < 3:
                     logger.warning("No or too short transcription detected")
                     tts_worker.speak("I didn't hear anything.")
                     continue

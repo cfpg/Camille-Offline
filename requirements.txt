@@ -1,11 +1,11 @@
-langchain==0.3.15
-langchain_community==0.3.15
-numpy==1.26.4
+glfw==2.7.0
+numpy==2.2.2
 openai_whisper==20231117
 pvporcupine==3.0.4
 PyAudio==0.2.14
+PyOpenGL==3.1.7
+PyOpenGL==3.1.9
 python-dotenv==1.0.1
 pyttsx4==3.0.15
-PyOpenGL==3.1.7
-PyOpenGL-accelerate==3.1.7
-glfw==2.7.0
+Requests==2.32.3
+selenium==4.28.1

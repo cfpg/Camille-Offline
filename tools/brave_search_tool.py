@@ -1,8 +1,6 @@
 from tools import register_tool
 import requests
-import os
-from config import BRAVE_SEARCH_API_TOKEN
-
+from config import Config
 
 SETUP_INSTRUCTIONS = """
 1. Visit https://brave.com/search/api/
@@ -26,20 +24,20 @@ def _get_setup_message(reason: str) -> str:
 @register_tool
 def brave_search(query: str) -> str:
     """
-    Search the web using Brave Search API and return relevant results.
+    Search the web using Brave Search API and return relevant results with URLs.
     
     Args:
         query: The search query string
     
     Returns:
-        Summary of search results or error message
+        Summary of search results with titles, descriptions, and URLs, or error message
     """
-    if not BRAVE_SEARCH_API_TOKEN:
+    if not Config.BRAVE_SEARCH_API_TOKEN:
         return _get_setup_message("Brave Search is not yet configured on this system")
 
     try:
         headers = {
-            "X-Subscription-Token": BRAVE_SEARCH_API_TOKEN,
+            "X-Subscription-Token": Config.BRAVE_SEARCH_API_TOKEN,
             "Accept": "application/json",
         }
         
@@ -66,7 +64,11 @@ def brave_search(query: str) -> str:
         
         summary = []
         for result in results:
-            summary.append(f"- {result['title']}: {result['description']}")
+            summary.append(
+                f"- {result['title']}\n"
+                f"  Description: {result['description']}\n"
+                f"  URL: {result['url']}"
+            )
             
         return "\n\n".join(summary)
 

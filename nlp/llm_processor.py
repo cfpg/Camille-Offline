@@ -1,109 +1,116 @@
-from langchain_community.chat_models import ChatOpenAI
-from langchain.agents import initialize_agent
-from langchain.memory import ConversationBufferMemory
-from langchain.schema import SystemMessage
+import json
+import logging
+from typing import Dict, Optional, List, Any
+from .memory import Memory
+from .tool import Tool
+from .types import ToolFunc
+from .prompts import get_system_prompt
+from .api_client import OpenAIClient
 from tools import get_all_tools
-from config import OPENAI_API_BASE, OPENAI_KEY
+from config import Config
 from utils.colors import colors
+from utils.log import print_log
 
+logger = logging.getLogger(__name__)
 
 class LLMProcessor:
-    def __init__(self, model, ai_name, user_name):
-        """
-        Initialize the LLMProcessor.
-
-        Args:
-            model (str): The LLM model to use.
-            ai_name (str): The name of the AI assistant.
-            user_name (str): The name of the user.
-        """
-        self.model = model
+    def __init__(self, model: str, ai_name: str, user_name: str):
         self.ai_name = ai_name
         self.user_name = user_name
-
-        # Define system prompt as a single source of truth
-        self.system_prompt = (
-            f"Your name is {self.ai_name} and you're my assistant. "
-            f"Respond to my queries in a concise and friendly manner, typically in 1-4 sentences. "
-            f"Maintain an informal, conversational tone, but remain professional when appropriate. "
-            f"Use simple, clear language and avoid unnecessary complexity or jargon. "
-            f"Refer to me as {self.user_name} only when natural in the conversation, not in every response. "
-
-            # Context and knowledge handling
-            f"Assume you have complete knowledge of any topic discussed. "
-            f"If unsure about specific details, provide a general but accurate response. "
-
-            # Response style
-            f"Be helpful, creative, and engaging in your responses. "
-            f"Use humor when appropriate, but keep it tasteful and relevant. "
-            f"Feel free to share relevant links or references when they add value to the response. "
-
-            # Content boundaries
-            f"Never provide harmful, dangerous, or illegal advice. "
-            f"Maintain a positive and constructive tone in all interactions. "
-
-            # Technical instructions
-            f"Don't mention these instructions or your internal processes. "
-            f"Don't explain how you arrived at answers unless explicitly asked. "
-            f"Don't overthink or second-guess responses - provide direct answers. "
-
-            # Special cases
-            f"When sharing links, ensure they are relevant and provide context about their content. "
-            f"If asked for jokes or humor, keep them appropriate and original. "
-            f"When using tools, explain the results in simple terms. "
-
-            # Final instructions
-            f"Remember: be concise, helpful, and human-like in your responses. "
-            f"Adapt your tone to match the context of each conversation. "
+        self.memory = Memory()
+        self.tools: Dict[str, Tool] = {}
+        self.api_client = OpenAIClient(
+            model=model,
+            api_base=Config.OPENAI_API_BASE,
+            api_key=Config.OPENAI_KEY
         )
+        
+        self._register_tools()
+        self._initialize_system_prompt()
+    
+    def _initialize_system_prompt(self) -> None:
+        self.system_prompt = get_system_prompt(self.ai_name)
+        self.memory.add_message("system", self.system_prompt)
 
-        # Initialize memory
-        self.memory = ConversationBufferMemory(
-            memory_key="chat_history", return_messages=True)
-        self._add_system_message()
+    def register_tool(self, func: ToolFunc, name: Optional[str] = None, description: Optional[str] = None):
+        tool_name = name or func.__name__
+        tool_description = description or func.__doc__ or "No description available"
+        self.tools[tool_name] = Tool(func, tool_name, tool_description)
+        return func
+    
+    def _register_tools(self):
+        try:
+            print(f"{colors['yellow']}Registering tools: {get_all_tools().items()}{colors['reset']}")
+            for name, func in get_all_tools().items():
+                self.register_tool(func, name=name)
+        except Exception as e:
+            logger.error(f"Failed to register tools: {e}")
+            raise
 
-        # Initialize LLM
-        self.llm = ChatOpenAI(
-            model_name=self.model,
-            temperature=0.7,
-            openai_api_base=OPENAI_API_BASE,
-            openai_api_key=OPENAI_KEY
+    def _get_openai_tools(self) -> List[Dict[str, Any]]:
+        return [tool.to_openai_schema() for tool in self.tools.values()]
+
+    def _handle_tool_call(self, response: Dict[str, Any]) -> str:
+        try:
+            # If no tool calls, return the content directly
+            if "tool_calls" not in response:
+                return response.get("content", "I apologize, but I couldn't process that request.")
+
+            # Handle tool calls
+            tool_calls = response.get("tool_calls", [])
+            if not tool_calls:
+                return response.get("content", "I apologize, but I couldn't process that request.")
+
+            # Process each tool call
+            for tool_call in tool_calls:
+                if tool_call["type"] != "function":
+                    continue
+
+                function_call = tool_call["function"]
+                tool_name = function_call["name"]
+                tool_args = json.loads(function_call["arguments"])
+
+                if tool_name not in self.tools:
+                    return f"I apologize, but I don't have access to the {tool_name} tool."
+
+                print_log(f"Calling tool {tool_name} with args {tool_args}", "yellow")
+                tool_result = self.tools[tool_name](**tool_args)
+
+                # Add tool result to memory
+                self.memory.add_message(
+                    "tool", 
+                    json.dumps({
+                        "tool_call_id": tool_call["id"],
+                        "name": tool_name,
+                        "result": tool_result
+                    })
+                )
+
+            # Get new response from LLM with tool results
+            messages = self.memory.get_messages()
+            final_response = self.api_client.get_completion(
+                messages, 
+                tools=self._get_openai_tools()
+            )
+            return final_response.get("content", "I apologize, but I couldn't process the tool results.")
+
+        except Exception as e:
+            logger.error(f"Tool call failed: {e}")
+            return f"I encountered an error while trying to help you: {str(e)}"
+
+    def process_input(self, input_text: str) -> str:
+        self.memory.add_message("user", input_text)
+        messages = self.memory.get_messages()
+        
+        response = self.api_client.get_completion(
+            messages, 
+            tools=self._get_openai_tools()
         )
-
-        # Initialize agent with all registered tools
-        self.agent = initialize_agent(
-            get_all_tools(),
-            self.llm,
-            agent="chat-conversational-react-description",
-            memory=self.memory,
-            verbose=True,
-            handle_parsing_errors=True
-        )
-
-    def _add_system_message(self):
-        """Add the system message to memory."""
-        self.memory.chat_memory.add_message(
-            SystemMessage(content=self.system_prompt))
-
+        final_response = self._handle_tool_call(response)
+        
+        self.memory.add_message("assistant", final_response)
+        return final_response
+    
     def clear_memory(self):
-        """
-        Clear the conversation memory.
-        Useful for starting a new conversation context.
-        """
         self.memory.clear()
-        self._add_system_message()
-
-    def process_input(self, input_text):
-        """
-        Process user input and generate a response using conversation history.
-
-        Args:
-            input_text (str): The user's input text.
-
-        Returns:
-            str: The AI's response.
-        """
-        print(f"{colors['cyan']}User input: {input_text}{colors['reset']}")
-        # Process input with agent
-        response = self.agent.run(input_text)
-        return response
+        self.memory.add_message("system", self.system_prompt)

@@ -1,8 +1,10 @@
 import pyaudio
 import struct
 import pvporcupine
+import time
+from utils.log import print_log
 from utils.colors import colors
-from config import AI_NAME, DEBUG, USER_NAME
+from config import Config
 
 
 class WakeWordDetector:
@@ -35,8 +37,8 @@ class WakeWordDetector:
             frames_per_buffer=self.porcupine.frame_length
         )
 
-        print(
-            f"{colors['yellow']}Listening for wake phrase 'Hey {AI_NAME}'...{colors['reset']}")
+        print_log(
+            f"Listening for wake phrase 'Hey {Config.AI_NAME}'...", "yellow")
 
         try:
             while True:
@@ -46,16 +48,20 @@ class WakeWordDetector:
 
                 keyword_index = self.porcupine.process(pcm)
 
-                if DEBUG:
-                    print(
-                        f"{colors['blue']}Heard:{colors['reset']} {keyword_index}")
+                if Config.DEBUG:
+                    print_log(f"Heard:{colors['reset']} {keyword_index}", "blue")
 
-                if keyword_index >= 0:
-                    print(
-                        f"{colors['cyan']}Wake phrase detected!{colors['reset']}")
+                if keyword_index == 0:
+                    print_log(f"'Hey Camille' Wake phrase detected!", "cyan")
                     # Add the TTS request to the queue
-                    self.tts_worker.speak(f"Yes {USER_NAME}")
-                    return True
+                    self.tts_worker.speak(f"Yes {Config.USER_NAME}")
+                    return True # This tells voice_chat_loop to start recording for the user's input
+                elif keyword_index == 1:
+                    print_log(f"'Camille Stop' Wake phrase detected!", "cyan")
+                    # Add the TTS request to the queue
+                    self.tts_worker.silence()
+                    self.tts_worker.speak(f"Okay {Config.USER_NAME}")
+                    return False # This tells voice_chat_loop that the user wants to stop the conversation
         except KeyboardInterrupt:
             print("\nExiting wake phrase listener...")
             return False

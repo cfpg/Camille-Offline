@@ -15,6 +15,7 @@ class Database:
         self.conn.executescript("""
             CREATE TABLE IF NOT EXISTS conversations (
                 id TEXT PRIMARY KEY,
+                title TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             
@@ -43,6 +44,14 @@ class Database:
         self.conn.execute("INSERT INTO conversations (id) VALUES (?)", (conversation_id,))
         self.conn.commit()
         return conversation_id
+    
+    def update_conversation_title(self, conversation_id: str, title: str):
+        print_log(f"UPDATING title for conversation#{conversation_id}: {title}", "green")
+        self.conn.execute(
+            "UPDATE conversations SET title = ? WHERE id = ?",
+            (title, conversation_id)
+        )
+        self.conn.commit()
     
     def add_message(self, conversation_id: str, role: str, content: str):
         print_log(f"INSERTING new message into conversation#{conversation_id}", "green")

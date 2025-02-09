@@ -17,13 +17,13 @@ class LLMProcessor:
     def __init__(self, model: str, ai_name: str, user_name: str):
         self.ai_name = ai_name
         self.user_name = user_name
-        self.memory = Memory()
         self.tools: Dict[str, Tool] = {}
         self.api_client = OpenAIClient(
             model=model,
             api_base=Config.OPENAI_API_BASE,
             api_key=Config.OPENAI_KEY
         )
+        self.memory = Memory(self.api_client)
         
         self._register_tools()
         self._initialize_system_prompt()

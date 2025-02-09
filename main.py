@@ -29,7 +29,7 @@ def voice_chat_loop(opengl_animation):
         # Initialize components inside the thread
         recorder = AudioRecorder()
         tts_worker = TTSWorker("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
-        wake_word_detector = WakeWordDetector(Config.PICOVOICE_ACCESS_KEY, ["wake_words/hey-camille.ppn", "wake_words/camille-stop.ppn"], tts_worker)
+        wake_word_detector = WakeWordDetector(Config.PICOVOICE_ACCESS_KEY, ["wake_words/hey-camille.ppn", "wake_words/camille-stop.ppn", "wake_words/new-conversation.ppn"], tts_worker)
         whisper_transcriber = WhisperTranscriber()
         llm_processor = LLMProcessor(Config.MODEL_NAME, Config.AI_NAME, Config.USER_NAME)
         tts_worker.start()
@@ -37,7 +37,8 @@ def voice_chat_loop(opengl_animation):
         opengl_animation.set_state("waiting", True)
 
         while opengl_animation.running:
-            if wake_word_detector.listen_for_wake_phrase():
+            wake_word_result = wake_word_detector.listen_for_wake_phrase()
+            if wake_word_result == "start_listening":
                 logger.info("Wake word detected")
                 opengl_animation.set_state("listening", True)
                 audio_file = recorder.record_audio()
@@ -55,6 +56,11 @@ def voice_chat_loop(opengl_animation):
                 opengl_animation.set_state("thinking", False)
                 logger.info(f"LLM response: {response}")
                 tts_worker.speak(response)
+            elif wake_word_result == "stop_speaking":
+                continue
+            elif wake_word_result == "new_conversation":
+                llm_processor.clear_memory()
+                continue
             
             # Check for state changes from TTS worker
             if tts_worker.state_event.is_set():

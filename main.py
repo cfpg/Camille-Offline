@@ -8,7 +8,11 @@ from audio_processing.tts import TTSWorker
 from nlp.whisper_transcriber import WhisperTranscriber
 from nlp.llm_processor import LLMProcessor
 from utils.colors import colors
+from utils.log import print_log
 from animation.opengl_animation import OpenGLAnimation
+from nlp.user_memory_manager import UserMemoryManager
+from nlp.api_client import OpenAIClient
+from nlp.memory import Memory
 
 # Configure logging
 logging.basicConfig(
@@ -24,6 +28,20 @@ logger = logging.getLogger(__name__)
 
 def voice_chat_loop(opengl_animation):
     logger.info("Starting voice chat loop")
+    
+    def record_and_transcribe():
+        opengl_animation.set_state("listening", True)
+        audio_file = recorder.record_audio()
+        transcribed_text = whisper_transcriber.transcribe(audio_file)
+        opengl_animation.set_state("listening", False)
+
+        if not transcribed_text or len(transcribed_text.strip()) < 3:
+            logger.warning("No or too short transcription detected")
+            tts_worker.speak("I didn't hear anything.")
+            return False
+
+        opengl_animation.set_state("thinking", True)
+        logger.info(f"Transcribed text: {transcribed_text}")
 
     try:
         # Initialize components inside the thread
@@ -31,27 +49,38 @@ def voice_chat_loop(opengl_animation):
         tts_worker = TTSWorker("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
         wake_word_detector = WakeWordDetector(Config.PICOVOICE_ACCESS_KEY, ["wake_words/hey-camille.ppn", "wake_words/camille-stop.ppn", "wake_words/new-conversation.ppn"], tts_worker)
         whisper_transcriber = WhisperTranscriber()
-        llm_processor = LLMProcessor(Config.MODEL_NAME, Config.AI_NAME, Config.USER_NAME)
+        api_client = OpenAIClient(
+            model=Config.MODEL_NAME,
+            api_base=Config.OPENAI_API_BASE,
+            api_key=Config.OPENAI_KEY
+        )
+        memory = Memory(api_client)
+        memory_manager = UserMemoryManager(memory.db)
+        llm_processor = LLMProcessor(Config.AI_NAME, Config.USER_NAME, api_client, memory, memory_manager)
         tts_worker.start()
         logger.info("All voice chat components initialized")
         opengl_animation.set_state("waiting", True)
 
         while opengl_animation.running:
+            if not memory_manager.is_setup:
+                print_log("Running user memory setup", "cyan")
+                for question in memory_manager.get_setup_questions():
+                    print_log(f"Asking: {question.question}", "cyan")
+                    tts_worker.speak(f"Please answer the following: {question.question}")
+                    time.sleep(1) # sleeping to await tts to finish asking question
+                    setup_answer = record_and_transcribe()
+                    if setup_answer:
+                        memory_manager.save_setup_question(question, setup_answer)
+                print_log("User memory setup complete", "cyan")
+            
             wake_word_result = wake_word_detector.listen_for_wake_phrase()
             if wake_word_result == "start_listening":
                 logger.info("Wake word detected")
-                opengl_animation.set_state("listening", True)
-                audio_file = recorder.record_audio()
-                transcribed_text = whisper_transcriber.transcribe(audio_file)
-                opengl_animation.set_state("listening", False)
-
-                if not transcribed_text or len(transcribed_text.strip()) < 3:
-                    logger.warning("No or too short transcription detected")
-                    tts_worker.speak("I didn't hear anything.")
-                    continue
-
-                opengl_animation.set_state("thinking", True)
-                logger.info(f"Transcribed text: {transcribed_text}")
+                transcribed_text = record_and_transcribe()
+                
+                if not transcribed_text:
+                    continue # Skip processing if no transcription
+                
                 response = llm_processor.process_input(transcribed_text)
                 opengl_animation.set_state("thinking", False)
                 logger.info(f"LLM response: {response}")

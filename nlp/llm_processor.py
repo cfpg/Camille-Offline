@@ -10,26 +10,28 @@ from tools import get_all_tools
 from config import Config
 from utils.colors import colors
 from utils.log import print_log
+from nlp.user_memory_manager import UserMemoryManager
 
 logger = logging.getLogger(__name__)
 
 class LLMProcessor:
-    def __init__(self, model: str, ai_name: str, user_name: str):
+    def __init__(self, ai_name: str, user_name: str, api_client: OpenAIClient, memory: Memory, memory_manager: UserMemoryManager):
         self.ai_name = ai_name
         self.user_name = user_name
         self.tools: Dict[str, Tool] = {}
-        self.api_client = OpenAIClient(
-            model=model,
-            api_base=Config.OPENAI_API_BASE,
-            api_key=Config.OPENAI_KEY
-        )
-        self.memory = Memory(self.api_client)
+        self.api_client = api_client
+        self.memory = memory
+        self.memory_manager = memory_manager
         
         self._register_tools()
         self._initialize_system_prompt()
     
     def _initialize_system_prompt(self) -> None:
-        self.system_prompt = get_system_prompt(self.ai_name)
+        # Append user memories to system prompt
+        memories = self.memory_manager.get_memories('setup') # Fetch setup memories only for now
+        user_memories = "\n\nUser personal information:\n".join(memories) if memories else ""
+        
+        self.system_prompt = get_system_prompt(self.ai_name, user_memories)
         self.memory.add_message("system", self.system_prompt)
 
     def register_tool(self, func: ToolFunc, name: Optional[str] = None, description: Optional[str] = None):

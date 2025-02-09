@@ -30,10 +30,9 @@ class Database:
             
             CREATE TABLE IF NOT EXISTS user_memories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                key TEXT NOT NULL,
-                value TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                memory TEXT NOT NULL,
+                source TEXT NOT NULL,  -- 'setup' or 'conversation'
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
         self.conn.commit()

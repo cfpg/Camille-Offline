@@ -1,139 +1,121 @@
-# Camille Offline AI Assistant
+# Camille - Your Local AI Voice Assistant
 
-Welcome to Camille Offline, a Python-based AI assistant that enables voice conversations using local Large Language Models (LLMs). This project leverages Whisper for speech-to-text, LM Studio for local LLM inference, and Porcupine for wake-word detection, all while prioritizing privacy and accessibility. Camille Offline is designed to provide a seamless, interactive voice-based AI experience entirely on your local machine.
+Camille is a Python-based AI voice assistant that runs entirely on your local machine, ensuring your privacy. It listens for a wake phrase, transcribes your voice commands, and uses a local Large Language Model (LLM) to provide intelligent responses. You can also interact with it through tools like weather, brave search and url visits.
 
 ## Key Features
 
-- **Privacy-First**: All processing happens locally—no data is sent to external servers.
-- **Voice Interaction**: Speak naturally to interact with the AI using wake-word detection and speech-to-text.
-- **Customizable**: Easily configure the AI's name, voice, and behavior to suit your preferences.
-- **Offline Capable**: Runs entirely on your machine, intended to prevent them from listening to you.
-- **Extensible Functionality**: Supports custom tools and functions through LangChain integration.
-- **Conversation Context**: Maintains context across interactions using LangChain's memory system.
+*   **Privacy-Focused:** No data is sent to external servers. Everything stays on your machine.
+*   **Voice Interaction:** Activate with a wake phrase and speak your commands naturally.
+*   **Customizable:** Configure the assistant's name and voice.
+*   **Offline Operation:** Works without an internet connection after initial setup.
+*   **Tools:** Extend functionality with tools like weather information, web search, and more.
+*   **Conversational Memory:** Maintains context across multiple interactions.
 
 ## Getting Started
 
-This guide will walk you through setting up and running Camille Offline on your local machine. Follow the steps below to prepare your environment, install dependencies, and start using the assistant.
+Follow these instructions to set up and run Camille on your local machine.
 
 ---
 
 ### Prerequisites
 
-Before you begin, ensure you have the following installed:
-
-1. **Anaconda**: A Python distribution that simplifies package management. Download and install it from the [official Anaconda website](https://www.anaconda.com/).
-2. **LM Studio**: A desktop application for running local LLMs. Download it from the [LM Studio website](https://lmstudio.ai/).
+*   **Anaconda:** A Python distribution for easy package management. Download and install it from the [Anaconda website](https://www.anaconda.com/).
+*   **LM Studio:** A desktop application for running local LLMs. Download it from the [LM Studio website](https://lmstudio.ai/).
 
 ---
 
 ### Setting Up Your Python Environment
 
-1. **Create a Conda Environment**:
-   Open a terminal and create a new Conda environment with Python 3.11:
-   ```
-   conda create -n camille-env python=3.11
-   ```
-   Replace `camille-env` with a name of your choice.
+1.  **Create a Conda Environment:**
 
-2. **Activate the Environment**:
-   Activate the newly created environment:
-   ```
-   conda activate camille-env
-   ```
-
-3. **Clone the Repository**:
-   Clone the Camille Offline repository to your local machine:
-   ```
-   git clone https://github.com/cfpg/Camille-Offline
-   cd Camille-Offline
-   ```
-
-4. **Install Required Packages**:
-   Install the necessary Python packages using the provided `requirements.txt` file:
-   ```
-   pip install -r requirements.txt
-   ```
+    Open a terminal and create a new Conda environment:
+    ```
+    conda create -n camille python=3.10
+    ```
+2.  **Activate the Environment:**
+    ```
+    conda activate camille
+    ```
+3.  **Clone the Repository:**
+    ```
+    git clone <repository_url>
+    cd Camille
+    ```
+    Replace `<repository_url>` with the actual repository URL.
+4.  **Install Dependencies:**
+    ```
+    pip install -r requirements.txt
+    ```
 
 ---
 
-### Configuring LM Studio
+### Configuration
 
-1. **Download a Model**:
-   Open LM Studio and download a compatible LLM model (e.g., `llama-3.2-3b-instruct`).
+1.  **LM Studio:**
+    *   Download a compatible LLM model (e.g., `llama-3.2-3b-instruct`) in LM Studio.
+    *   Start the LM Studio local inference server, ensuring it runs on `http://localhost:1234`.
 
-2. **Start the Local Inference Server**:
-   In LM Studio, navigate to the "Local Server" tab and start the server. Ensure it is running on `http://localhost:1234`.
+2.  **Environment Variables:**
 
----
-
-### Running Camille Offline
-
-1. **Set Up Environment Variables**:
-   Create a `.env` file in the project directory and add the following variables:
-   ```
-   PICOVOICE_ACCESS_KEY=your_access_key_here
-   ```
-   Replace `your_access_key_here` with your actual Picovoice access key.
-
-2. **Run the Script**:
-   Execute the main script to start Camille Offline:
-   ```
-   python main.py
-   ```
-
-3. **Interact with Camille**:
-   - Use the wake phrase **"Hey Camille"** to activate the assistant.
-   - Speak your command after the wake phrase is detected.
-   - Camille will process your request and respond via text-to-speech, maintaining context across interactions.
+    Create a `.env` file in the project directory with the following content, filling in your actual API keys:
+    ```
+    PICOVOICE_ACCESS_KEY=""
+    MODEL_NAME="llama-3.2-3b-instruct"
+    OPENWEATHERMAP_API_KEY=""
+    OPENWEATHERMAP_DEFAULT_CITY=""
+    BRAVE_SEARCH_API_TOKEN=""
+    ```
+    *   **PICOVOICE\_ACCESS\_KEY:** Obtain this from [Picovoice Console](https://console.picovoice.ai/).
+    *   **MODEL\_NAME:** The name of the LLM model you downloaded in LM Studio.
+    *   **OPENWEATHERMAP\_API\_KEY:** (Optional) Sign up for an API key at [openweathermap.org](https://openweathermap.org/).
+    *   **OPENWEATHERMAP\_DEFAULT\_CITY:** (Optional) Default city for weather requests.
+    *   **BRAVE\_SEARCH\_API\_TOKEN:** (Optional) Get an API key from [Brave Search API](https://brave.com/search/api/).
 
 ---
 
-## Troubleshooting
+### Running Camille
 
-- **LM Studio Compatibility**: If the provided setup doesn't work for your system, refer to the [LM Studio documentation](https://lmstudio.ai/docs) for alternative configurations.
-- **Dependency Issues**: Regularly update the `requirements.txt` file to ensure compatibility with the latest versions of dependencies.
-- **Need Help?**: This project was initially developed with the help of ChatGPT. If you encounter issues, consider consulting GPT-based tools for troubleshooting and solutions.
+1.  **Start the Assistant:**
+    ```
+    python main.py
+    ```
 
 ---
 
-## Customization
+### Initial Setup Questions
 
-- **Change the Wake Phrase**: Replace the `hey-camille.ppn` file in the project directory with a custom wake-word model from [Picovoice Console](https://console.picovoice.ai/).
-- **Modify the AI's Behavior**: Edit the system prompt in the `process_input` function to customize the AI's responses.
-- **Add Custom Tools**: Create new Python files in the `tools` directory to add custom functionality.
-- **Adjust Audio Settings**: Modify the `RATE`, `CHUNK`, and `FORMAT` variables to optimize audio recording for your environment.
+The first time you run Camille, it will ask you a few questions to personalize your experience. These questions help the AI understand your preferences and provide more relevant responses. The questions are:
 
-## Adding New Tools
+*   What's your name?
+*   Which city do you live in?
+*   What do you do for a living?
 
-Camille Offline supports custom tools through LangChain's tool system. Follow these steps to add new functionality:
+Your answers to these questions are stored locally and used to inform the AI's interactions with you.  This information is only used to improve the quality and relevance of the AI's responses and is not shared externally.  The answers will be passed on every new converastion in the system prompt to let the AI know more about you.
 
-1. **Create a New Tool File**:
-   Create a new Python file in the `tools` directory (e.g., `tools/my_tool.py`).
+---
 
-2. **Define Your Tool**:
-   Use the following template to create your tool:
+### Interacting with Camille
 
-   ```python
-   from tools import register_tool
-   from langchain.tools import tool
+*   **Wake Up:** Say **"Hey Camille"** to activate the assistant.
+*   **Speak Your Command:** After activation, speak your request clearly.
+*   **Stop Camille:** Say **"Camille stop"** to interrupt the assistant.
+*   **New Conversation:** Say **"New conversation"** to clear the memory and start fresh.
 
-   @tool
-   @register_tool
-   def my_tool(parameter: str) -> str:
-       """
-       Brief description of what your tool does.
-       
-       Args:
-           parameter: Explanation of the parameter
-           
-       Returns:
-           Explanation of the return value
-       """
-       # Your implementation here
-       return "Tool result"
-   ```
-3. **Automatic Registration**:
-    The tool will be automatically discovered and registered when the application starts.
+---
+
+### Tools and AI Functionality
+
+Camille leverages a variety of tools to enhance its capabilities and provide more comprehensive assistance. These tools allow the AI to access real-time information, perform specific tasks, and deliver more accurate and relevant responses.
+
+The AI intelligently determines when and how to use these tools based on your requests. When you ask a question that requires external data or a specific action, Camille will automatically select the appropriate tool, retrieve the necessary information, and incorporate it into its response. This seamless integration of tools allows for a more dynamic and helpful conversational experience.
+
+Here are the available tools:
+
+*   **Weather:** Provides current weather information for a specified city.  Activated when you ask about the weather.
+*   **Brave Search:** Searches the web for information on a given topic. Activated when you request information not readily available in the AI's knowledge base.
+*   **Visit URL:** Extracts the main text content from a specified URL.  Activated when you ask the AI to summarize a webpage.
+
+To enable the full functionality of these tools, ensure you have correctly configured the necessary API keys in the `.env` file, as described in the Configuration section.
 
 ---
 
@@ -150,17 +132,3 @@ We welcome contributions to improve Camille Offline! If you'd like to contribute
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-## Acknowledgments
-
-- **LM Studio**: For providing an easy-to-use interface for local LLM inference.
-- **OpenAI Whisper**: For enabling accurate speech-to-text capabilities.
-- **Picovoice**: For wake-word detection technology.
-- **LangChain**: For providing tools and memory management capabilities.
-- **VideotronicMaker**: This script was originally forked from [VideotronicMaker/LM-Studio-Voice-Conversation](https://github.com/VideotronicMaker/LM-Studio-Voice-Conversation).
-
----
-
-Enjoy using Camille Offline! If you have any questions or feedback, feel free to open an issue on the [GitHub repository](https://github.com/cfpg/Camille-Offline).

@@ -42,7 +42,6 @@ class AudioRecorder:
         return silence_threshold
 
     def record_audio(self, max_silent_chunks=15):
-        print_log("Starting audio recording")
         stream = self.audio.open(format=self.format, channels=self.channels,
                                rate=self.rate, input=True, frames_per_buffer=self.chunk)
         
@@ -50,6 +49,7 @@ class AudioRecorder:
         frames = []
         silent_chunk_count = 0
 
+        print_log("Starting audio recording")
         try:
             while True:
                 data = stream.read(self.chunk, exception_on_overflow=False)

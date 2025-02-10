@@ -30,10 +30,9 @@ class Database:
             
             CREATE TABLE IF NOT EXISTS user_memories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                key TEXT NOT NULL,
-                value TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                memory TEXT NOT NULL,
+                source TEXT NOT NULL,  -- 'setup' or 'conversation'
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
         self.conn.commit()
@@ -68,6 +67,21 @@ class Database:
             (conversation_id,)
         )
         return [{"role": role, "content": content} for role, content in cursor.fetchall()]
+    
+    def get_user_memories(self, source: str = 'setup') -> List[str]:
+        print_log(f"FETCHING user memories with source={source}", "green")
+        cursor = self.conn.execute(
+            "SELECT memory FROM user_memories WHERE source = ?", (source,)
+        )
+        return [row[0] for row in cursor.fetchall()]
+    
+    def add_user_memory(self, memory: str, source: str = 'setup'):
+        print_log(f"INSERTING new user memory into DB with source={source}", "green")
+        self.conn.execute(
+            "INSERT INTO user_memories (memory, source) VALUES (?, ?)",
+            (memory, source)
+        )
+        self.conn.commit()
     
     def close(self):
         self.conn.close()

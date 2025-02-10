@@ -59,23 +59,26 @@ def voice_chat_loop(opengl_animation):
         memory_manager = UserMemoryManager(memory.db)
         llm_processor = LLMProcessor(Config.AI_NAME, Config.USER_NAME, api_client, memory, memory_manager)
         tts_worker.start()
+        time.sleep(3) # Await TTS Worker startup
         logger.info("All voice chat components initialized")
         opengl_animation.set_state("waiting", True)
 
         while opengl_animation.running:
             if memory_manager.needs_setup():
-                time.sleep(3)
                 print_log("Running user memory setup", "cyan")
                 tts_worker.speak("Hey! I wil ask you a few questions to get to know you better.")
                 time.sleep(5) # sleeping to await tts to finish asking question
                 for question in memory_manager.get_setup_questions():
                     print_log(f"Asking: {question.question}", "cyan")
-                    tts_worker.speak(f"Please answer the following: {question.question}")
+                    tts_worker.speak(f"Answer the following: {question.question}")
                     time.sleep(2) # sleeping to await tts to finish asking question
                     setup_answer = record_and_transcribe()
                     if setup_answer:
                         print_log(f"User answered: {setup_answer}", "cyan")
                         memory_manager.save_setup_question(question, setup_answer)
+                
+                # Update system prompt with new user memories
+                llm_processor._initialize_system_prompt()
                 print_log("User memory setup complete", "cyan")
             
             wake_word_result = wake_word_detector.listen_for_wake_phrase()

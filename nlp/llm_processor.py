@@ -29,9 +29,9 @@ class LLMProcessor:
     def _initialize_system_prompt(self) -> None:
         # Append user memories to system prompt
         memories = self.memory_manager.get_user_memories('setup') # Fetch setup memories only for now
-        user_memories = "\n\nUser personal information:\n".join(memories) if memories else ""
+        user_memories = "\n".join(memories) if memories else ""
         
-        self.system_prompt = get_system_prompt(self.ai_name, user_memories)
+        self.system_prompt = get_system_prompt(self.ai_name, f"Use this information to refer to the user:\n{user_memories}")
         self.memory.add_message("system", self.system_prompt)
 
     def register_tool(self, func: ToolFunc, name: Optional[str] = None, description: Optional[str] = None):

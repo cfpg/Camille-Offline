@@ -42,6 +42,7 @@ def voice_chat_loop(opengl_animation):
 
         opengl_animation.set_state("thinking", True)
         logger.info(f"Transcribed text: {transcribed_text}")
+        return transcribed_text
 
     try:
         # Initialize components inside the thread
@@ -62,14 +63,15 @@ def voice_chat_loop(opengl_animation):
         opengl_animation.set_state("waiting", True)
 
         while opengl_animation.running:
-            if not memory_manager.is_setup:
+            if memory_manager.needs_setup():
+                time.sleep(3)
                 print_log("Running user memory setup", "cyan")
-                tts_worker.speak("Hello! It seems this is the first time we're meeting, I need to ask you a few questions to get to know you better.")
+                tts_worker.speak("Hey! I wil ask you a few questions to get to know you better.")
                 time.sleep(5) # sleeping to await tts to finish asking question
                 for question in memory_manager.get_setup_questions():
                     print_log(f"Asking: {question.question}", "cyan")
                     tts_worker.speak(f"Please answer the following: {question.question}")
-                    time.sleep(3) # sleeping to await tts to finish asking question
+                    time.sleep(2) # sleeping to await tts to finish asking question
                     setup_answer = record_and_transcribe()
                     if setup_answer:
                         print_log(f"User answered: {setup_answer}", "cyan")

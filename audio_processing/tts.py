@@ -26,7 +26,7 @@ class TTSWorker:
         try:
             engine = pyttsx4.init()
             engine.setProperty('voice', self.voice_id)
-            engine.say("")
+            engine.say("Loading...")
             engine.runAndWait()
             print_log("TTS engine initialized successfully")
 

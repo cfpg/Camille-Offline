@@ -28,7 +28,7 @@ class LLMProcessor:
     
     def _initialize_system_prompt(self) -> None:
         # Append user memories to system prompt
-        memories = self.memory_manager.get_memories('setup') # Fetch setup memories only for now
+        memories = self.memory_manager.get_user_memories('setup') # Fetch setup memories only for now
         user_memories = "\n\nUser personal information:\n".join(memories) if memories else ""
         
         self.system_prompt = get_system_prompt(self.ai_name, user_memories)

@@ -125,7 +125,7 @@ def main():
             "waiting": "./videos/camille-waiting.mp4",
             "listening": "./videos/camille-waiting.mp4",
             "speaking": "./videos/camille-talking.mp4",
-            "thinking": "./videos/camille-waiting.mp4"
+            "thinking": "./videos/camille-thinking.mp4"
         }
         logger.info("Creating Video Animation instance")
         animation = VideoAnimation(video_paths)

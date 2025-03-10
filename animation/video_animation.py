@@ -106,4 +106,4 @@ class VideoAnimation:
             if state["video"] and state["video"].isOpened():
                 state["video"].release()
         cv2.destroyAllWindows()
-        logger.info("VideoAnimation cleanup complete") 
+        logger.info("VideoAnimation cleanup complete")

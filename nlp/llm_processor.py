@@ -11,6 +11,7 @@ from config import Config
 from utils.colors import colors
 from utils.log import print_log
 from nlp.user_memory_manager import UserMemoryManager
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +28,24 @@ class LLMProcessor:
         self._initialize_system_prompt()
     
     def _initialize_system_prompt(self) -> None:
+        # Get current date and time
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         # Append user memories to system prompt
-        memories = self.memory_manager.get_user_memories('setup') # Fetch setup memories only for now
+        memories = self.memory_manager.get_user_memories('setup')  # Fetch setup memories only for now
         user_memories = "\n".join(memories) if memories else ""
         
-        self.system_prompt = get_system_prompt(self.ai_name, f"Use this information to refer to the user:\n{user_memories}")
+        # Create a more explicit context block for user information
+        user_context = (
+            "IMPORTANT USER CONTEXT:\n"
+            "The following information represents key facts about the user that you should "
+            "consider in all your interactions. Please incorporate this knowledge naturally "
+            "into your responses when relevant:\n\n"
+            f"{user_memories}\n\n"
+            f"Current date and time: {current_time}\n"
+        )
+        
+        self.system_prompt = get_system_prompt(self.ai_name, user_context)
         self.memory.add_message("system", self.system_prompt)
 
     def register_tool(self, func: ToolFunc, name: Optional[str] = None, description: Optional[str] = None):

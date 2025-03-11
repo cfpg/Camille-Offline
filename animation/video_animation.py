@@ -86,18 +86,37 @@ class VideoAnimation:
         return True
 
     def set_state(self, state_name: str, value: bool):
+        """
+        Set the state of a specific animation layer.
+        Each state is managed independently without affecting others.
+        
+        Args:
+            state_name (str): Name of the state to modify
+            value (bool): New value for the state
+        """
         if state_name not in self.states:
             logger.warning(f"Unknown state: {state_name}")
             return
-            
+        
+        logger.debug(f"Before state change - Current states: {[(s, self.states[s]['enabled']) for s in self.states]}")
+        
         if value:
-            # Disable all other states
+            # Enabling a state: disable all others first
             for state in self.states:
                 self.states[state]["enabled"] = False
-            # Enable the requested state
             self.states[state_name]["enabled"] = True
             self.current_state = state_name
             logger.info(f"Switched to state: {state_name}")
+        else:
+            # Disabling a state: only switch to waiting if no other states are active
+            self.states[state_name]["enabled"] = False
+            any_active = any(self.states[s]["enabled"] for s in self.states if s != "waiting")
+            if not any_active:
+                self.states["waiting"]["enabled"] = True
+                self.current_state = "waiting"
+                logger.info("Switched back to waiting state")
+        
+        logger.debug(f"After state change - Current states: {[(s, self.states[s]['enabled']) for s in self.states]}")
 
     def stop(self):
         logger.info("Stopping VideoAnimation")

@@ -26,7 +26,7 @@ class TTSWorker:
         try:
             engine = pyttsx4.init()
             engine.setProperty('voice', self.voice_id)
-            engine.say("Loading...")
+            engine.say("Loaded...")
             engine.runAndWait()
             print_log("TTS engine initialized successfully")
 
@@ -43,7 +43,8 @@ class TTSWorker:
 
                     engine.say(phrase)
                     engine.runAndWait()
-
+                    
+                    print_log(f"Setting speaking to False")
                     state_dict["speaking"] = False
                     state_event.set()
                     
@@ -51,6 +52,9 @@ class TTSWorker:
 
                 except Exception as e:
                     print_log(f"Error processing TTS phrase: {str(e)}", "red")
+                    print_log(f"Setting speaking to False because of error", "red")
+                    state_dict["speaking"] = False
+                    state_event.set()
 
         except Exception as e:
             print_log(f"Error in TTS worker process: {str(e)}", "red")

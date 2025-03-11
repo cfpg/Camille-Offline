@@ -7,26 +7,21 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 @register_tool
-def get_weather(city: Optional[str] = None) -> str:
+def get_weather(city: str) -> str:
     """
     Get the current weather for a specific city using OpenWeatherMap API.
-    If no city is provided or city is 'current', returns weather for the default city.
     Only accepts real city names as input.
     
     Args:
-        city: The city name to get weather for (optional). Can be:
-              - A specific city name
-              - None (uses default city)
-              - 'current' (uses default city)
+        city: The city name to get weather for.
         
     Returns:
         Weather information or error message
     """
     if not Config.OPENWEATHERMAP_API_KEY:
-        return "Weather API is not configured"
+        return "OpenWeatherMap API is not configured"
 
-    target_city = (city if city and city.lower() not in ["current", "current city", "my city"]
-                  else Config.OPENWEATHERMAP_DEFAULT_CITY)
+    target_city = city
     
     if not target_city:
         return "No city specified and no default city configured"

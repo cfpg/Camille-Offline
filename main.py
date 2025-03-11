@@ -9,7 +9,7 @@ from nlp.whisper_transcriber import WhisperTranscriber
 from nlp.llm_processor import LLMProcessor
 from utils.colors import colors
 from utils.log import print_log
-from animation.opengl_animation import OpenGLAnimation
+from animation.video_animation import VideoAnimation
 from nlp.user_memory_manager import UserMemoryManager
 from nlp.api_client import OpenAIClient
 from nlp.memory import Memory
@@ -26,21 +26,21 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-def voice_chat_loop(opengl_animation):
+def voice_chat_loop(animation):
     logger.info("Starting voice chat loop")
     
     def record_and_transcribe():
-        opengl_animation.set_state("listening", True)
+        animation.set_state("listening", True)
         audio_file = recorder.record_audio()
         transcribed_text = whisper_transcriber.transcribe(audio_file)
-        opengl_animation.set_state("listening", False)
+        animation.set_state("listening", False)
 
         if not transcribed_text or len(transcribed_text.strip()) < 3:
             logger.warning("No or too short transcription detected")
             tts_worker.speak("I didn't hear anything.")
             return False
 
-        opengl_animation.set_state("thinking", True)
+        animation.set_state("thinking", True)
         logger.info(f"Transcribed text: {transcribed_text}")
         return transcribed_text
 
@@ -48,7 +48,8 @@ def voice_chat_loop(opengl_animation):
         # Initialize components inside the thread
         recorder = AudioRecorder()
         tts_worker = TTSWorker("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_ZIRA_11.0")
-        wake_word_detector = WakeWordDetector(Config.PICOVOICE_ACCESS_KEY, ["wake_words/hey-camille.ppn", "wake_words/camille-stop.ppn", "wake_words/new-conversation.ppn"], tts_worker)
+        wake_word_detector = WakeWordDetector(Config.PICOVOICE_ACCESS_KEY, 
+            ["wake_words/hey-camille.ppn", "wake_words/camille-stop.ppn", "wake_words/new-conversation.ppn"])
         whisper_transcriber = WhisperTranscriber()
         api_client = OpenAIClient(
             model=Config.MODEL_NAME,
@@ -61,9 +62,11 @@ def voice_chat_loop(opengl_animation):
         tts_worker.start()
         time.sleep(3) # Await TTS Worker startup
         logger.info("All voice chat components initialized")
-        opengl_animation.set_state("waiting", True)
+        animation.set_state("waiting", True)
 
-        while opengl_animation.running:
+        wake_word_detector.start()  # Start the wake word detection process
+
+        while animation.running:
             if memory_manager.needs_setup():
                 print_log("Running user memory setup", "cyan")
                 tts_worker.speak("Hey! I wil ask you a few questions to get to know you better.")
@@ -81,29 +84,35 @@ def voice_chat_loop(opengl_animation):
                 llm_processor._initialize_system_prompt()
                 print_log("User memory setup complete", "cyan")
             
-            wake_word_result = wake_word_detector.listen_for_wake_phrase()
-            if wake_word_result == "start_listening":
-                logger.info("Wake word detected")
-                transcribed_text = record_and_transcribe()
+            # Check for wake word events
+            if wake_word_detector.wake_event.is_set():
+                action = wake_word_detector.wake_dict["action"]
+                logger.info(f"Wake word detected with action: {action}")
                 
-                if not transcribed_text:
-                    continue # Skip processing if no transcription
+                if action == "start_listening":
+                    tts_worker.speak(f"Yes {Config.USER_NAME}")
+                    transcribed_text = record_and_transcribe()
+                    if transcribed_text:
+                        response = llm_processor.process_input(transcribed_text)
+                        animation.set_state("thinking", False)
+                        logger.info(f"LLM response: {response}")
+                        tts_worker.speak(response)
+                elif action == "stop_speaking":
+                    tts_worker.silence()
+                    tts_worker.speak(f"Okay {Config.USER_NAME}")
+                elif action == "new_conversation":
+                    tts_worker.speak(f"Starting a new conversation {Config.USER_NAME}")
+                    llm_processor.clear_memory()
                 
-                response = llm_processor.process_input(transcribed_text)
-                opengl_animation.set_state("thinking", False)
-                logger.info(f"LLM response: {response}")
-                tts_worker.speak(response)
-            elif wake_word_result == "stop_speaking":
-                continue
-            elif wake_word_result == "new_conversation":
-                llm_processor.clear_memory()
-                continue
-            
-            # Check for state changes from TTS worker
+                wake_word_detector.wake_event.clear()
+                print(f"Clearing wake word event")
+
+            # Check for TTS state changes
             if tts_worker.state_event.is_set():
                 logger.info(f"TTSWorker sent a State Event change: {tts_worker.state_dict}")
-                opengl_animation.set_state("speaking", tts_worker.state_dict["speaking"])
+                animation.set_state("speaking", tts_worker.state_dict["speaking"])
                 tts_worker.state_event.clear()
+                logger.info(f"Clearing TTSWorker state event")
 
             time.sleep(0.1)
 
@@ -113,6 +122,7 @@ def voice_chat_loop(opengl_animation):
         if recorder:
              recorder.audio.terminate()
         tts_worker.stop()
+        wake_word_detector.stop()
         logger.info("Voice chat thread stopped")
 
 def main():
@@ -120,30 +130,31 @@ def main():
     print(f"{colors['yellow']}Starting up...{colors['reset']}")
 
     try:
-        # Initialize OpenGL animation first
-        logger.info("Creating OpenGL Animation instance")
-        opengl_animation = OpenGLAnimation()
-        logger.info("Starting OpenGL Animation")
-        opengl_animation.start()  # Call start() to initialize GLFW and shaders
+        # Initialize Video animation with all state videos
+        video_paths = {
+            "waiting": "./videos/camille-waiting.mp4",
+            "listening": "./videos/camille-waiting.mp4",
+            "speaking": "./videos/camille-talking.mp4",
+            "thinking": "./videos/camille-thinking.mp4"
+        }
+        logger.info("Creating Video Animation instance")
+        animation = VideoAnimation(video_paths)
+        animation.start()
         
-        if not opengl_animation.running:
-            logger.error("OpenGL Animation failed to initialize properly")
+        if not animation.running:
+            logger.error("Video Animation failed to initialize properly")
             return
 
-        voice_chat_thread = threading.Thread(target=voice_chat_loop, args=(
-            opengl_animation,))
-        voice_chat_thread.daemon = True  # Make thread daemon so it exits with main thread
+        voice_chat_thread = threading.Thread(target=voice_chat_loop, args=(animation,))
+        voice_chat_thread.daemon = True
         voice_chat_thread.start()
         logger.info("Voice chat thread started")
 
-        # Main rendering loop
-        while opengl_animation.running:
-            if not opengl_animation.render():
-                logger.info("OpenGL animation stopped rendering")
+        # Main loop - update animation in main thread
+        while animation.running:
+            if not animation.update():  # Call update in main thread
                 break
-
-            # Limit frame rate (optional, GLFW's swap interval might already handle this)
-            time.sleep(1/60)
+            time.sleep(0.001)  # Small sleep to prevent CPU overload
 
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt")
@@ -152,9 +163,9 @@ def main():
         logger.error(f"Unexpected error in main loop: {str(e)}", exc_info=True)
     finally:
         logger.info("Cleaning up resources")
-        opengl_animation.running = False
+        animation.running = False
         voice_chat_thread.join(timeout=2)
-        opengl_animation.stop()
+        animation.stop()
         logger.info("Application shutdown complete")
 
 if __name__ == "__main__":

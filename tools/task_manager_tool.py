@@ -181,16 +181,19 @@ class TaskManager:
             cursor = conn.cursor()
             deadline_ts = None
             
-            if 'dueIn' in details:
+            if 'dueIn' in details and details['dueIn'] is not None:
                 try:
                     deadline_ts = self.parse_time_string(details['dueIn'])
                 except ValueError as e:
                     return json.dumps({"error": str(e)})
-            elif 'deadline' in details:
+            elif 'deadline' in details and details['deadline'] is not None:
                 try:
                     deadline_ts = datetime.fromisoformat(details['deadline'])
                 except ValueError:
                     return json.dumps({"error": f"Invalid deadline format: {details['deadline']}"})
+            
+            if not details.get('description'):
+                return json.dumps({"error": "Task description is required"})
             
             cursor.execute(
                 "INSERT INTO tasks (description, deadline, status) VALUES (?, ?, ?)",
@@ -202,9 +205,9 @@ class TaskManager:
     def _list_tasks(self, details: Dict) -> str:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            filter_type = details.get('filter', 'all')
-            
             now = datetime.now()
+            
+            # Base query
             query = """
                 SELECT id, description, deadline, status 
                 FROM tasks 
@@ -212,29 +215,44 @@ class TaskManager:
             """
             params = []
 
-            # Handle different time-based filters
-            if filter_type == 'today':
-                query += " AND date(deadline) = date(?)"
-                params.append(now.date())
-            elif filter_type == 'tomorrow':
-                tomorrow = now.date() + timedelta(days=1)
-                query += " AND date(deadline) = date(?)"
-                params.append(tomorrow)
-            elif filter_type == 'this_week':
-                week_start = now.date() - timedelta(days=now.weekday())
-                week_end = week_start + timedelta(days=6)
-                query += " AND date(deadline) BETWEEN date(?) AND date(?)"
-                params.extend([week_start, week_end])
-            elif filter_type == 'next_week':
-                next_week_start = now.date() + timedelta(days=7-now.weekday())
-                next_week_end = next_week_start + timedelta(days=6)
-                query += " AND date(deadline) BETWEEN date(?) AND date(?)"
-                params.extend([next_week_start, next_week_end])
-            elif filter_type == 'overdue':
-                query += " AND deadline < ? AND status != 'completed'"
+            # Handle status filter
+            status_filter = details.get('status', 'pending')
+            if status_filter == 'pending':
+                query += " AND status = 'pending'"
+            elif status_filter == 'overdue':
+                query += " AND deadline < ? AND status = 'pending'"
                 params.append(now)
+            # 'all' status doesn't need additional filtering
             
-            query += " ORDER BY deadline"
+            # Handle deadline filter
+            deadline_filter = details.get('deadline')
+            if deadline_filter == 'today':
+                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                today_end = today_start + timedelta(days=1, microseconds=-1)
+                query += " AND deadline >= ? AND deadline <= ?"
+                params.extend([today_start, today_end])
+            elif deadline_filter == 'tomorrow':
+                tomorrow_start = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                tomorrow_end = tomorrow_start + timedelta(days=1, microseconds=-1)
+                query += " AND deadline >= ? AND deadline <= ?"
+                params.extend([tomorrow_start, tomorrow_end])
+            elif deadline_filter == 'this_week':
+                week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+                week_end = week_start + timedelta(days=7, microseconds=-1)
+                query += " AND deadline >= ? AND deadline <= ?"
+                params.extend([week_start, week_end])
+            elif deadline_filter == 'next_week':
+                next_week_start = (now + timedelta(days=7-now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+                next_week_end = next_week_start + timedelta(days=7, microseconds=-1)
+                query += " AND deadline >= ? AND deadline <= ?"
+                params.extend([next_week_start, next_week_end])
+            
+            # Add ordering
+            query += """ 
+                ORDER BY 
+                    CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
+                    deadline
+            """
             
             cursor.execute(query, params)
             tasks = []
@@ -253,7 +271,8 @@ class TaskManager:
             return json.dumps({
                 "success": True, 
                 "tasks": tasks,
-                "filter": filter_type
+                "deadline": deadline_filter,
+                "status": status_filter
             })
 
     def get_upcoming_tasks(self, minutes_threshold: int = 15) -> List[Dict]:
@@ -293,7 +312,10 @@ def manage_tasks(action: str, details: str) -> str:
                     "dueIn": "15 minutes" | "2 hours" | "1 day",  # relative time
                     "deadline": "YYYY-MM-DD HH:MM:SS"  # or absolute time
                 }
-                For 'list': {"filter": "today|pending|all"}
+                For 'list': {
+                    "deadline": "today" | "tomorrow" | "this_week" | "next_week" | null,  # deadline filter
+                    "status": "pending" | "overdue" | "all"  # default: "pending"
+                }
                 For 'complete': Either a single task object or array of task objects
     
     Returns:
@@ -303,7 +325,10 @@ def manage_tasks(action: str, details: str) -> str:
         details_dict = json.loads(details) if isinstance(details, str) else details
         
         if action == "list":
-            return task_manager.manage_tasks(action, {"filter": "today"})
+            return task_manager.manage_tasks(action, {
+                "deadline": details_dict.get("deadline"),
+                "status": details_dict.get("status", "pending")
+            })
         elif action == "add":
             return task_manager.manage_tasks(action, {
                 "description": details_dict.get("description"),

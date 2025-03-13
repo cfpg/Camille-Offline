@@ -1,6 +1,7 @@
 import time
 import threading
 import logging
+import json
 from config import Config
 from audio_processing.recorder import AudioRecorder
 from audio_processing.wake_word import WakeWordDetector
@@ -13,6 +14,8 @@ from animation.video_animation import VideoAnimation
 from nlp.user_memory_manager import UserMemoryManager
 from nlp.api_client import OpenAIClient
 from nlp.memory import Memory
+from tools.task_manager_tool import TaskManager
+from datetime import datetime, timedelta
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +32,11 @@ logger = logging.getLogger(__name__)
 def voice_chat_loop(animation):
     logger.info("Starting voice chat loop")
     
+    # Add these variables at the start of the function
+    last_reminder_check = 0
+    reminded_task_ids = set()
+    REMINDER_CHECK_INTERVAL = 60  # Check every minute
+
     def record_and_transcribe():
         animation.set_state("listening", True)
         audio_file = recorder.record_audio()
@@ -66,7 +74,43 @@ def voice_chat_loop(animation):
 
         wake_word_detector.start()  # Start the wake word detection process
 
+        # Add task_manager initialization
+        task_manager = TaskManager()
+
         while animation.running:
+            current_time = time.time()
+            
+            if current_time - last_reminder_check >= REMINDER_CHECK_INTERVAL:
+                logger.info("Checking for upcoming reminders...")
+                last_reminder_check = current_time
+                
+                # Update to filter tasks only for today
+                upcoming_tasks = task_manager.get_upcoming_tasks(15)
+                
+                if upcoming_tasks:
+                    logger.info(f"Found {len(upcoming_tasks)} upcoming tasks for today")
+                    # Filter out tasks we've already reminded about
+                    new_tasks = [task for task in upcoming_tasks if task['id'] not in reminded_task_ids]
+                    
+                    if new_tasks:
+                        logger.info(f"Sending reminder for {len(new_tasks)} new tasks")
+                        # Add new task IDs to reminded set
+                        reminded_task_ids.update(task['id'] for task in new_tasks)
+                        
+                        # Construct reminder message
+                        if len(new_tasks) == 1:
+                            message = f"Hey {Config.USER_NAME}, you have to {new_tasks[0]['description']} in 15 minutes."
+                        else:
+                            task_descriptions = [task['description'] for task in new_tasks]
+                            tasks_text = ", and ".join(", ".join(task_descriptions).rsplit(", ", 1))
+                            message = f"Hey {Config.USER_NAME}, you have to {tasks_text} in 15 minutes."
+                        
+                        logger.info(f"Speaking reminder: {message}")
+                        # Speak the reminder
+                        tts_worker.speak(message)
+                else:
+                    logger.debug("No upcoming tasks found")
+
             if memory_manager.needs_setup():
                 print_log("Running user memory setup", "cyan")
                 tts_worker.speak("Hey! I wil ask you a few questions to get to know you better.")

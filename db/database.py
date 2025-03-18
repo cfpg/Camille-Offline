@@ -7,9 +7,18 @@ from utils.log import print_log
 
 class Database:
     def __init__(self, db_path: str = "db/chat.db"):
-        Path(db_path).parent.mkdir(exist_ok=True)
-        self.conn = sqlite3.connect(db_path)
+        self.db_path = db_path
+        Path(self.db_path).parent.mkdir(exist_ok=True)
+        # Initialize first connection for main thread
+        self.conn = self._create_connection()
         self.create_tables()
+    
+    def _create_connection(self):
+        return sqlite3.connect(self.db_path)
+    
+    def get_connection(self):
+        """Create and return a new database connection."""
+        return self._create_connection()
     
     def create_tables(self):
         self.conn.executescript("""
@@ -33,6 +42,15 @@ class Database:
                 memory TEXT NOT NULL,
                 source TEXT NOT NULL,  -- 'setup' or 'conversation'
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                description TEXT NOT NULL,
+                deadline TIMESTAMP,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
             );
         """)
         self.conn.commit()

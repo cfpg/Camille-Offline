@@ -110,6 +110,8 @@ class VideoAnimation:
         else:
             # Disabling a state: only switch to waiting if no other states are active
             self.states[state_name]["enabled"] = False
+            # Add a small delay before checking if we should switch to waiting
+            time.sleep(0.1)  # 100ms delay
             any_active = any(self.states[s]["enabled"] for s in self.states if s != "waiting")
             if not any_active:
                 self.states["waiting"]["enabled"] = True

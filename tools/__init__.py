@@ -6,6 +6,7 @@ from config import *  # Import all config here
 from nlp.types import ToolFunc
 
 _tools: Dict[str, ToolFunc] = {}
+_tools_initialized = False
 
 def register_tool(func: ToolFunc) -> ToolFunc:
     """
@@ -25,6 +26,10 @@ def get_all_tools() -> Dict[str, ToolFunc]:
 
 def auto_discover_tools() -> None:
     """Automatically discover and import all tools in the tools directory."""
+    global _tools_initialized
+    if _tools_initialized:
+        return
+        
     tools_dir = Path(__file__).parent
     for file in tools_dir.glob("*.py"):
         if file.stem != "__init__":
@@ -34,6 +39,8 @@ def auto_discover_tools() -> None:
                 print_log(f"Imported tool module: {module_name}", "yellow")
             except ImportError as e:
                 print_log(f"Failed to import tool module {module_name}: {e}", "red")
+    
+    _tools_initialized = True
 
 # Automatically discover tools when the package is imported
 auto_discover_tools()

@@ -12,6 +12,8 @@ class Message:
     role: str
     content: str
     function_call: Optional[FunctionCall] = None
+    tool_call_id: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 class ToolFunction(TypedDict):
     name: str

@@ -31,7 +31,7 @@ class Memory:
         )
         return response.get("content", "Untitled Conversation").strip()
     
-    def add_message(self, role: str, content: str):
+    def add_message(self, role: str, content: str, metadata: Optional[Dict] = None):
         print_log(f"Adding message to memory: {role}: {content}", "magenta")
         
         # Generate title on first user message
@@ -65,6 +65,7 @@ class Memory:
             function_message = Message(
                 role="tool", 
                 content=tool_data["result"],
+                tool_call_id=tool_data["tool_call_id"],
                 function_call=FunctionCall(
                     id=tool_data["tool_call_id"],
                     name=tool_data["name"],
@@ -74,9 +75,9 @@ class Memory:
             self.messages.append(function_message)
             self.db.add_message(self.current_conversation_id, "tool", tool_data["result"])
         else:
-            message = Message(role=role, content=content)
+            message = Message(role=role, content=content, metadata=metadata)
             self.messages.append(message)
-            self.db.add_message(self.current_conversation_id, role, content)
+            self.db.add_message(self.current_conversation_id, role, content, metadata)
     
     def get_messages(self) -> List[Dict[str, str]]:
         messages = []
@@ -97,10 +98,13 @@ class Memory:
                     "content": msg.content
                 })
             else:
-                messages.append({
+                message_dict = {
                     "role": msg.role,
                     "content": msg.content
-                })
+                }
+                if msg.metadata:
+                    message_dict["metadata"] = msg.metadata
+                messages.append(message_dict)
         return messages
     
     def clear(self):

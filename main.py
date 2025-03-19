@@ -36,6 +36,7 @@ def voice_chat_loop(animation):
     last_reminder_check = 0
     reminded_task_ids = set()
     REMINDER_CHECK_INTERVAL = 60  # Check every minute
+    aiAskedAQuestion = False  # Add flag to track if the AI expects the user to answer a question
 
     def record_and_transcribe():
         animation.set_state("listening", True)
@@ -134,13 +135,22 @@ def voice_chat_loop(animation):
                 logger.info(f"Wake word detected with action: {action}")
                 
                 if action == "start_listening":
-                    tts_worker.speak(f"Yes {Config.USER_NAME}")
+                    if not aiAskedAQuestion == True:
+                        tts_worker.speak(f"Yes {Config.USER_NAME}")
+                    elif aiAskedAQuestion == True:
+                        aiAskedAQuestion = False  # Reset flag since we're handling it now
+
                     transcribed_text = record_and_transcribe()
                     if transcribed_text:
-                        response = llm_processor.process_input(transcribed_text)
+                        response, continue_conversation = llm_processor.process_input(transcribed_text)
                         animation.set_state("thinking", False)
                         logger.info(f"LLM response: {response}")
                         tts_worker.speak(response)
+                            
+                        # If the AI wants to continue the conversation, wait for TTS to finish then set wake event
+                        if continue_conversation:
+                            logger.info("AI wants to continue conversation, will wait for TTS to finish")
+                            aiAskedAQuestion = True
                 elif action == "stop_speaking":
                     tts_worker.silence()
                     tts_worker.speak(f"Okay {Config.USER_NAME}")
@@ -157,6 +167,12 @@ def voice_chat_loop(animation):
                 animation.set_state("speaking", tts_worker.state_dict["speaking"])
                 tts_worker.state_event.clear()
                 logger.info(f"Clearing TTSWorker state event")
+
+            # If we're continuing conversation and TTS just finished speaking, trigger next recording
+            if aiAskedAQuestion and not tts_worker.state_dict["speaking"]:
+                logger.info("TTS finished speaking and conversation should continue, setting wake event")
+                wake_word_detector.wake_dict["action"] = "start_listening"
+                wake_word_detector.wake_event.set()
 
             time.sleep(0.1)
 

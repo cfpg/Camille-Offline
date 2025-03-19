@@ -87,7 +87,10 @@ class LLMProcessor:
                 tool_args = json.loads(function_call["arguments"])
 
                 if tool_name not in self.tools:
-                    return f"I apologize, but I don't have access to the {tool_name} tool."
+                    return json.dumps({
+                        "message": f"I apologize, but I don't have access to the {tool_name} tool.",
+                        "continueConversation": False
+                    })
 
                 print_log(f"Calling tool {tool_name} with args {tool_args}", "yellow")
                 tool_result = self.tools[tool_name](**tool_args)
@@ -107,15 +110,31 @@ class LLMProcessor:
             messages = self.memory.get_messages()
             final_response = self.api_client.get_completion(
                 messages, 
-                tools=self._get_openai_tools()
+                tools=self._get_openai_tools(),
+                force_json_response=True
             )
+            logger.info(f"AI Response after tool call: {final_response}")
+
+            # Check if we got another tool call instead of a response
+            if "tool_calls" in final_response:
+                # Recursively handle the new tool call
+                return self._handle_tool_call(final_response)            
+
             return final_response.get("content", "I apologize, but I couldn't process the tool results.")
 
         except Exception as e:
             logger.error(f"Tool call failed: {e}")
-            return f"I encountered an error while trying to help you: {str(e)}"
+            return json.dumps({
+                "message": f"I encountered an error while trying to help you: {str(e)}",
+                "continueConversation": False
+            })
 
-    def process_input(self, input_text: str) -> str:
+    def process_input(self, input_text: str) -> tuple[str, bool]:
+        """
+        Process user input and return both the response message and whether to continue the conversation.
+        Returns:
+            tuple[str, bool]: (message, continue_conversation)
+        """
         self.memory.add_message("user", input_text)
         messages = self.memory.get_messages()
         
@@ -123,10 +142,23 @@ class LLMProcessor:
             messages, 
             tools=self._get_openai_tools()
         )
+        logger.info(f"AI Response before handling tool call: {response}")
         final_response = self._handle_tool_call(response)
+        logger.info(f"AI Response after handling tool call: {final_response}")
         
-        self.memory.add_message("assistant", final_response)
-        return final_response
+        try:
+            # Parse the JSON response
+            response_data = json.loads(final_response)
+            message = response_data.get("message", "I apologize, but I couldn't process that request.")
+            continue_conversation = response_data.get("continueConversation", message.strip().endswith("?"))
+        except json.JSONDecodeError:
+            # If the response is not valid JSON, wrap it in our expected format
+            message = final_response
+            continue_conversation = message.strip().endswith("?")
+        
+        # Save only the message, not the JSON structured response
+        self.memory.add_message("assistant", message)
+        return message, continue_conversation
     
     def clear_memory(self):
         self.memory.clear()

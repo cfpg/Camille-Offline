@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Dict
 from utils.log import print_log
+import json
 
 class Database:
     def __init__(self, db_path: str = "db/chat.db"):
@@ -33,6 +34,7 @@ class Database:
                 conversation_id TEXT,
                 role TEXT NOT NULL,
                 content TEXT,
+                metadata TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (conversation_id) REFERENCES conversations(id)
             );
@@ -70,11 +72,12 @@ class Database:
         )
         self.conn.commit()
     
-    def add_message(self, conversation_id: str, role: str, content: str):
+    def add_message(self, conversation_id: str, role: str, content: str, metadata: Optional[Dict] = None):
         print_log(f"INSERTING new message into conversation#{conversation_id}", "green")
+        metadata_json = json.dumps(metadata) if metadata else None
         self.conn.execute(
-            "INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)",
-            (conversation_id, role, content)
+            "INSERT INTO messages (conversation_id, role, content, metadata) VALUES (?, ?, ?, ?)",
+            (conversation_id, role, content, metadata_json)
         )
         self.conn.commit()
     

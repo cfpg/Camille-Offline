@@ -20,7 +20,8 @@ class OpenAIClient:
         self, 
         messages: List[Dict[str, str]], 
         tools: Optional[List[Tool]] = None,
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        force_json_response: bool = False
     ) -> Dict[str, Any]:
         try:
             print_log(f"Sending completion request to OpenAI API: {messages}", "magenta")
@@ -33,6 +34,22 @@ class OpenAIClient:
             if tools:
                 payload["tools"] = tools
                 payload["tool_choice"] = "auto"
+            
+            if force_json_response:
+                payload["response_format"] = {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "response",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {"type": "string"},
+                                "continueConversation": {"type": "boolean"}
+                            },
+                            "required": ["message", "continueConversation"]
+                        }
+                    }
+                }
             
             response = requests.post(
                 f"{self.api_base}/chat/completions",
